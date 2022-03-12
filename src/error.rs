@@ -14,6 +14,8 @@ pub enum Error {
     /// An error parsing the changed properties from the D-Bus
     /// `PropertiesChanged` signal.
     ParsePropertyChangeFail(zbus::Error),
+    /// An error quering one property of a unit.
+    QueryPropertyFail(zbus::fdo::Error),
     /// An error calling systemd to start the transient unit.
     StartFail(zbus::Error),
 }
@@ -37,6 +39,9 @@ impl Display for Error {
                 write!(f, "cannot listen property change events: {}", e)
             }
             Self::ParsePropertyChangeFail(e) => {
+                write!(f, "cannot parse property changes: {}", e)
+            }
+            Self::QueryPropertyFail(e) => {
                 write!(f, "cannot parse property changes: {}", e)
             }
         }

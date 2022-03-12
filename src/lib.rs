@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+use std::time::Duration;
 use zbus::fdo::{PropertiesChangedStream, PropertiesProxy};
 use zbus::zvariant::{ObjectPath, Value};
 use zbus::Connection;
@@ -22,6 +23,7 @@ pub struct Run {
 
 /// A transient service running.
 pub struct StartedRun<'a> {
+    proxy: zbus::fdo::PropertiesProxy<'a>,
     stream: PropertiesChangedStream<'a>,
 }
 
@@ -29,6 +31,7 @@ pub struct StartedRun<'a> {
 #[derive(Debug)]
 pub struct FinishedRun {
     failed: bool,
+    wall_time_usage: Option<Duration>,
 }
 
 // The logic is "borrowed" from systemd/src/run.c.
@@ -72,21 +75,23 @@ fn object_path_from_unit_name<'a, 'b>(s: &'a str) -> Result<ObjectPath<'b>> {
     ObjectPath::try_from(path_string).map_err(Error::DBusInvalidPath)
 }
 
-async fn stream_for_unit_property_change<'a>(
+async fn listen_unit_property_change<'a>(
     bus: &Connection,
     unit: &ObjectPath<'a>,
-) -> Result<PropertiesChangedStream<'a>> {
-    PropertiesProxy::builder(bus)
+) -> Result<(PropertiesProxy<'a>, PropertiesChangedStream<'a>)> {
+    let proxy = PropertiesProxy::builder(bus)
         .path(unit)
         .expect("should not fail with validated path")
         .destination("org.freedesktop.systemd1")
         .expect("should not fail with hardcode dest")
         .build()
         .await
-        .expect("should not fail with all info provided")
+        .expect("should not fail with all info provided");
+    let stream = proxy
         .receive_properties_changed()
         .await
-        .map_err(Error::ListenPropertyChangeFail)
+        .map_err(Error::ListenPropertyChangeFail)?;
+    Ok((proxy, stream))
 }
 
 impl Run {
@@ -154,7 +159,7 @@ impl Run {
         // service.  Or we may miss D-Bus signals, causing StartedRun::wait
         // to hang forever.  And this also prevents the start of the
         // transient service in case this fails.
-        let stream = stream_for_unit_property_change(&bus, &unit_path).await?;
+        let (proxy, stream) = listen_unit_property_change(&bus, &unit_path).await?;
 
         let mut argv = vec![&self.path];
         argv.extend(&self.args);
@@ -195,7 +200,7 @@ impl Run {
             .start_transient_unit(unit_name, "fail", &properties, &[])
             .await
             .map_err(Error::StartFail)
-            .map(|_| StartedRun { stream })
+            .map(|_| StartedRun { stream, proxy })
     }
 }
 
@@ -225,8 +230,32 @@ impl<'a> StartedRun<'a> {
             }
         }
 
+        let iface = zbus_names::InterfaceName::try_from("org.freedesktop.systemd1.Unit")
+            .expect("should not fail with hardcoded str");
+
+        let t0 = self
+            .proxy
+            .get(iface.as_ref(), "InactiveExitTimestampMonotonic")
+            .await
+            .map_err(Error::QueryPropertyFail)?;
+
+        let t1 = self
+            .proxy
+            .get(iface.as_ref(), "InactiveEnterTimestampMonotonic")
+            .await
+            .map_err(Error::QueryPropertyFail)?;
+
+        let time_usage_us = match (t0.downcast_ref(), t1.downcast_ref()) {
+            (Some(Value::U64(t0)), Some(Value::U64(t1))) => Some(t1 - t0),
+            _ => None,
+        };
+
         let failed = active_state.unwrap() == "failed";
-        Ok(FinishedRun { failed })
+        let wall_time_usage = time_usage_us.map(Duration::from_micros);
+        Ok(FinishedRun {
+            failed,
+            wall_time_usage,
+        })
     }
 }
 
@@ -237,6 +266,10 @@ impl FinishedRun {
     /// [systemd.service(5)](man:systemd.service(5)) for details.
     pub fn is_failed(&self) -> bool {
         self.failed
+    }
+
+    pub fn wall_time_usage(&self) -> Option<Duration> {
+        self.wall_time_usage
     }
 }
 
