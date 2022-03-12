@@ -26,6 +26,7 @@ pub struct StartedRun<'a> {
 }
 
 /// A transient service finished.
+#[derive(Debug)]
 pub struct FinishedRun {
     failed: bool,
 }
