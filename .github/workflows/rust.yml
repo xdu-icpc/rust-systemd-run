@@ -3,32 +3,22 @@ name: Rust
 on:
   push:
     branches: [ master ]
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ master ]
-  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+  test:
+    name: Test on Ubuntu
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Build
-        run: cargo build --release
-      - name: Upload
-        uses: 'actions/upload-artifact@v2'
-        with:
-          name: artifact-${{ matrix.os }}
-          path: |
-            target/release/cftool
-            target/release/cftool.exe
+      - name: Test
+        run: cargo test
+      - name: Test as Root
+        env:
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: sudo
+        run: cargo test --include-ignored root 
