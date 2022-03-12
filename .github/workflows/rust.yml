@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Test
-        run: cargo test
+        run: sudo su --login $(whoami) -c "cargo test"
       - name: Test as Root
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: sudo
