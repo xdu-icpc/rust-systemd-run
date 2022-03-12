@@ -23,9 +23,7 @@ impl Identity {
     /// Create an `Identity::UserGroup` with an UNIX user, and the UNIX
     /// group with the same name as the user.
     pub fn user<T: AsRef<str>>(u: T) -> Self {
-        let u = u.as_ref().to_owned();
-        let g = u.clone();
-        Self::UserGroup(u, g)
+        Self::user_group(u.as_ref(), u.as_ref())
     }
 
     /// Create an `Identity::UserGroup` with an UNIX user and an UNIX group.

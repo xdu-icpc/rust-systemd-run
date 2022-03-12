@@ -21,7 +21,7 @@ async fn test_dynamic_user() {
 #[ignore]
 async fn test_nobody() {
     let r = Run::new("/bin/true")
-        .identity(Identity::user("nobody"))
+        .identity(Identity::user_group("nobody", "nogroup"))
         .start()
         .await
         .expect("should be able to start /bin/true")
@@ -60,7 +60,7 @@ async fn test_nobody_access() {
     let f = "/run/rust_systemd_run_test_file";
     let r = Run::new("/bin/touch")
         .arg(f)
-        .identity(Identity::user("nobody"))
+        .identity(Identity::user_group("nobody", "nogroup"))
         .start()
         .await
         .expect("should be able to start /bin/true")
