@@ -21,4 +21,4 @@ jobs:
       - name: Test as Root
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: sudo
-        run: cargo test --include-ignored root 
+        run: cargo test -- --include-ignored root 
