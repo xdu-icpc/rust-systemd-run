@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use zbus::zvariant::OwnedValue;
 
 /// The error type of `systemd_run`.
 ///
@@ -18,6 +19,8 @@ pub enum Error {
     QueryPropertyFail(zbus::fdo::Error),
     /// An error calling systemd to start the transient unit.
     StartFail(zbus::Error),
+    /// An error attempting to calculate the time usage of a service.
+    TimeUsageFail(&'static str, OwnedValue, OwnedValue),
 }
 
 /// Alias for a `Result` with the error type `systemd_run::Error`.
@@ -43,6 +46,10 @@ impl Display for Error {
             }
             Self::QueryPropertyFail(e) => {
                 write!(f, "cannot parse property changes: {}", e)
+            }
+            Self::TimeUsageFail(what, t0, t1) => {
+                write!(f, "cannot calculate {} time usage: ", what)?;
+                write!(f, "t0 = {:?}, t1 = {:?}", t0, t1)
             }
         }
     }

@@ -31,7 +31,7 @@ pub struct StartedRun<'a> {
 #[derive(Debug)]
 pub struct FinishedRun {
     failed: bool,
-    wall_time_usage: Option<Duration>,
+    wall_time_usage: Duration,
 }
 
 // The logic is "borrowed" from systemd/src/run.c.
@@ -246,12 +246,12 @@ impl<'a> StartedRun<'a> {
             .map_err(Error::QueryPropertyFail)?;
 
         let time_usage_us = match (t0.downcast_ref(), t1.downcast_ref()) {
-            (Some(Value::U64(t0)), Some(Value::U64(t1))) => Some(t1 - t0),
-            _ => None,
+            (Some(Value::U64(t0)), Some(Value::U64(t1))) => t1 - t0,
+            _ => return Err(Error::TimeUsageFail("wall", t0, t1)),
         };
 
         let failed = active_state.unwrap() == "failed";
-        let wall_time_usage = time_usage_us.map(Duration::from_micros);
+        let wall_time_usage = Duration::from_micros(time_usage_us);
         Ok(FinishedRun {
             failed,
             wall_time_usage,
@@ -268,7 +268,8 @@ impl FinishedRun {
         self.failed
     }
 
-    pub fn wall_time_usage(&self) -> Option<Duration> {
+    /// Get the usage of wall-clock time of the finished transient service.
+    pub fn wall_time_usage(&self) -> Duration {
         self.wall_time_usage
     }
 }
