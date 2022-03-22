@@ -133,7 +133,7 @@ impl Run {
     }
 
     /// Set an identity to run the transient service.  The default is
-    /// `Identity::Session`.
+    /// `Identity::session()`.
     pub fn identity(mut self, i: Identity) -> Self {
         self.identity = i;
         self
