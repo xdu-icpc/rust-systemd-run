@@ -106,7 +106,7 @@ impl Run {
             args: vec![],
             service_name: None,
             collect_on_fail: false,
-            identity: Identity::Session,
+            identity: Identity::session(),
             runtime_max: None,
             memory_max: None,
             memory_swap_max: None,
@@ -198,7 +198,7 @@ impl Run {
 
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
-        let bus = if matches!(self.identity, Identity::Session) {
+        let bus = if identity::is_session(&self.identity) {
             Connection::session().await
         } else {
             Connection::system().await
@@ -232,27 +232,22 @@ impl Run {
             properties.push(prop);
         }
 
-        match &self.identity {
-            Identity::UserGroup(u, g) => {
-                let prop = [
-                    ("User", Value::from(u.clone())),
-                    ("Group", Value::from(g.clone())),
-                ];
-                properties.extend(prop);
-            }
-            Identity::Dynamic => {
-                properties.push(("DynamicUser", Value::from(true)));
-            }
-            Identity::Session => {}
-        }
+        let identity_prop = identity::unit_properties(&self.identity);
+        properties.extend(identity_prop);
 
         if let Some(d) = &self.runtime_max {
             let usec = u64::try_from(d.as_micros()).unwrap_or(u64::MAX);
             properties.push(("RuntimeMaxUSec", Value::from(usec)));
         }
 
+        let memory_max_name = if cfg!(feature = "systemd_231") {
+            "MemoryMax"
+        } else {
+            "MemoryLimit"
+        };
+
         for (k, v) in [
-            ("MemoryMax", &self.memory_max),
+            (memory_max_name, &self.memory_max),
             ("MemorySwapMax", &self.memory_swap_max),
         ] {
             if let Some(v) = v {
@@ -343,8 +338,3 @@ impl FinishedRun {
         self.wall_time_usage
     }
 }
-
-#[cfg(test)]
-mod tests;
-#[cfg(test)]
-mod tests_root;

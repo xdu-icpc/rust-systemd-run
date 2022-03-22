@@ -1,5 +1,5 @@
-use crate::Run;
 use std::time::Duration;
+use systemd_run::Run;
 
 #[async_std::test]
 async fn test_true() {
@@ -37,7 +37,7 @@ async fn test_wall_time_usage() {
         .await
         .expect("should be able to get the status of the Run");
     assert!(!r.is_failed(), "/bin/sleep should run successfully");
-    assert!(r.wall_time_usage > Duration::from_secs(1));
+    assert!(r.wall_time_usage() > Duration::from_secs(1));
 }
 
 #[async_std::test]
@@ -56,6 +56,6 @@ async fn test_runtime_max() {
         r.is_failed(),
         "/bin/sleep should have failed because of a timeout"
     );
-    assert!(r.wall_time_usage > Duration::from_secs(1));
-    assert!(r.wall_time_usage < Duration::from_secs(2));
+    assert!(r.wall_time_usage() > Duration::from_secs(1));
+    assert!(r.wall_time_usage() < Duration::from_secs(2));
 }

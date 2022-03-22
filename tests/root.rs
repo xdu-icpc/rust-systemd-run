@@ -1,10 +1,11 @@
-use crate::{Identity, Run};
+use systemd_run::{Identity, Run};
 
 #[async_std::test]
 #[ignore]
-async fn test_dynamic_user() {
+#[cfg(feature = "systemd_231")]
+async fn test_root_dynamic_user() {
     let r = Run::new("/bin/true")
-        .identity(Identity::Dynamic)
+        .identity(Identity::dynamic())
         .start()
         .await
         .expect("should be able to start /bin/true")
@@ -19,7 +20,7 @@ async fn test_dynamic_user() {
 
 #[async_std::test]
 #[ignore]
-async fn test_nobody() {
+async fn test_root_nobody() {
     let r = Run::new("/bin/true")
         .identity(Identity::user_group("nobody", "nogroup"))
         .start()
@@ -36,11 +37,12 @@ async fn test_nobody() {
 
 #[async_std::test]
 #[ignore]
-async fn test_dynamic_user_access() {
+#[cfg(feature = "systemd_231")]
+async fn test_root_dynamic_user_access() {
     let f = "/run/rust_systemd_run_test_file";
     let r = Run::new("/bin/touch")
         .arg(f)
-        .identity(Identity::Dynamic)
+        .identity(Identity::dynamic())
         .start()
         .await
         .expect("should be able to start /bin/true")
@@ -56,7 +58,7 @@ async fn test_dynamic_user_access() {
 
 #[async_std::test]
 #[ignore]
-async fn test_nobody_access() {
+async fn test_root_nobody_access() {
     let f = "/run/rust_systemd_run_test_file";
     let r = Run::new("/bin/touch")
         .arg(f)
