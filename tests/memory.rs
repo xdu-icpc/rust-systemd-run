@@ -22,10 +22,12 @@ mod memory_tests_need_unified_cgroup {
     }
 
     #[async_std::test]
+    #[cfg(feature = "systemd_236")]
     async fn test_memory_limit_exceed() {
         let r = Run::new(PATH)
             .memory_max(Byte::from_str("128 MB").unwrap())
             .memory_swap_max(Byte::from(0usize))
+            .collect_on_fail()
             .start()
             .await
             .unwrap()

@@ -14,6 +14,7 @@ async fn test_true() {
 }
 
 #[async_std::test]
+#[cfg(feature = "systemd_236")]
 async fn test_false() {
     let r = Run::new("/bin/false")
         .collect_on_fail()
@@ -41,6 +42,7 @@ async fn test_wall_time_usage() {
 }
 
 #[async_std::test]
+#[cfg(feature = "systemd_236")]
 async fn test_runtime_max() {
     let r = Run::new("/bin/sleep")
         .arg("2")

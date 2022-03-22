@@ -12,7 +12,7 @@ jobs:
     name: Test on Ubuntu
     runs-on: ubuntu-latest
     env:
-      TEST_FLAG: --no-default-features --features systemd_231
+      TEST_FLAG: --no-default-features --features systemd_236
     steps:
       - name: Checkout
         uses: actions/checkout@v3

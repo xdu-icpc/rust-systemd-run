@@ -37,11 +37,12 @@ async fn test_root_nobody() {
 
 #[async_std::test]
 #[ignore]
-#[cfg(feature = "systemd_231")]
+#[cfg(feature = "systemd_236")]
 async fn test_root_dynamic_user_access() {
     let f = "/run/rust_systemd_run_test_file";
     let r = Run::new("/bin/touch")
         .arg(f)
+        .collect_on_fail()
         .identity(Identity::dynamic())
         .start()
         .await
@@ -58,10 +59,12 @@ async fn test_root_dynamic_user_access() {
 
 #[async_std::test]
 #[ignore]
+#[cfg(feature = "systemd_236")]
 async fn test_root_nobody_access() {
     let f = "/run/rust_systemd_run_test_file";
     let r = Run::new("/bin/touch")
         .arg(f)
+        .collect_on_fail()
         .identity(Identity::user_group("nobody", "nogroup"))
         .start()
         .await

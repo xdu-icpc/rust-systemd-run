@@ -141,8 +141,11 @@ impl Run {
 
     /// Unload the transient service even if it fails.
     ///
+    /// This is not available if `systemd_236` is disabled.
+    ///
     /// Read `CollectMode=` in [systemd.unit(5)](man:systemd.unit(5))
     /// for details.
+    #[cfg(feature = "systemd_236")]
     pub fn collect_on_fail(mut self) -> Self {
         self.collect_on_fail = true;
         self
