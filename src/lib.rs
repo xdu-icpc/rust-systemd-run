@@ -172,6 +172,9 @@ impl Run {
     /// Read `MemoryMax=` in
     /// [systemd.resource-control(5)](man:systemd.resource-control(5))
     /// for details.
+    ///
+    /// If the feature `systemd_231` is disabled, `MemoryLimit=` will be
+    /// used instead if `MemoryMax=` for compatibility.
     pub fn memory_max(mut self, d: Byte) -> Self {
         self.memory_max = Some(d);
         self
@@ -181,8 +184,7 @@ impl Run {
     /// processes in this unit.
     ///
     /// This setting is supported only if the unified control group is used,
-    /// so it's disabled if the feature `unified_cgroup` (enabled by
-    /// default) is disabled.
+    /// so it's not available if the feature `unified_cgroup` is disabled.
     ///
     /// A `Byte` exceeding `u64::MAX` bytes is trimmed to `u64::MAX` bytes
     /// silently.

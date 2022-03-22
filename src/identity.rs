@@ -37,6 +37,8 @@ impl Identity {
     /// Run the transient service as a UNIX user and group pair dynamically
     /// allocated.
     ///
+    /// This is unavailable if the feature `systemd_231` is disabled.
+    ///
     /// You need to be the `root` user to start a transient service with
     /// this.  Read `DynamicUser=` in
     /// [`systemd.exec(5)`](man:systemd.exec(5)) for details.
