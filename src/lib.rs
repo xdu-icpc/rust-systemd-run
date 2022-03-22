@@ -22,6 +22,7 @@ pub struct Run {
     identity: Identity,
     runtime_max: Option<Duration>,
     memory_max: Option<Byte>,
+    memory_swap_max: Option<Byte>,
 }
 
 /// A transient service running.
@@ -108,6 +109,7 @@ impl Run {
             identity: Identity::Session,
             runtime_max: None,
             memory_max: None,
+            memory_swap_max: None,
         }
     }
 
@@ -175,6 +177,25 @@ impl Run {
         self
     }
 
+    /// Specify the absolute limit on swap usage of the executed
+    /// processes in this unit.
+    ///
+    /// This setting is supported only if the unified control group is used,
+    /// so it's disabled if the feature `unified_cgroup` (enabled by
+    /// default) is disabled.
+    ///
+    /// A `Byte` exceeding `u64::MAX` bytes is trimmed to `u64::MAX` bytes
+    /// silently.
+    ///
+    /// Read `MemorySwapMax=` in
+    /// [systemd.resource-control(5)](man:systemd.resource-control(5))
+    /// for details.
+    #[cfg(feature = "unified_cgroup")]
+    pub fn memory_swap_max(mut self, d: Byte) -> Self {
+        self.memory_swap_max = Some(d);
+        self
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
         let bus = if matches!(self.identity, Identity::Session) {
@@ -230,9 +251,14 @@ impl Run {
             properties.push(("RuntimeMaxUSec", Value::from(usec)));
         }
 
-        if let Some(b) = &self.memory_max {
-            let b = u64::try_from(b.get_bytes()).unwrap_or(u64::MAX);
-            properties.push(("MemoryMax", Value::from(b)))
+        for (k, v) in [
+            ("MemoryMax", &self.memory_max),
+            ("MemorySwapMax", &self.memory_swap_max),
+        ] {
+            if let Some(v) = v {
+                let b = u64::try_from(v.get_bytes()).unwrap_or(u64::MAX);
+                properties.push((k, Value::from(b)))
+            }
         }
 
         let properties = properties.iter().map(|(x, y)| (*x, y)).collect::<Vec<_>>();
