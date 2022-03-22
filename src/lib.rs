@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+use byte_unit::Byte;
 use std::time::Duration;
 use zbus::fdo::{PropertiesChangedStream, PropertiesProxy};
 use zbus::zvariant::{ObjectPath, Value};
@@ -20,6 +21,7 @@ pub struct Run {
     collect_on_fail: bool,
     identity: Identity,
     runtime_max: Option<Duration>,
+    memory_max: Option<Byte>,
 }
 
 /// A transient service running.
@@ -105,6 +107,7 @@ impl Run {
             collect_on_fail: false,
             identity: Identity::Session,
             runtime_max: None,
+            memory_max: None,
         }
     }
 
@@ -147,10 +150,28 @@ impl Run {
     /// and the service has been active for longer than the specified time
     /// it is terminated and put into a failure state.
     ///
+    /// A `Duration` exceeding `u64::MAX` microseconds is trimmed to
+    /// `u64::MAX` microseconds silently.
+    ///
     /// Read `RuntimeMaxSec=` in
     /// [systemd.service(5)](man:systemd.service(5)) for details.
     pub fn runtime_max(mut self, d: Duration) -> Self {
         self.runtime_max = Some(d);
+        self
+    }
+
+    /// Specify the absolute limit on memory usage of the executed
+    /// processes in this unit. If memory usage cannot be contained under
+    /// the limit, out-of-memory killer is invoked inside the unit.
+    ///
+    /// A `Byte` exceeding `u64::MAX` bytes is trimmed to `u64::MAX` bytes
+    /// silently.
+    ///
+    /// Read `MemoryMax=` in
+    /// [systemd.resource-control(5)](man:systemd.resource-control(5))
+    /// for details.
+    pub fn memory_max(mut self, d: Byte) -> Self {
+        self.memory_max = Some(d);
         self
     }
 
@@ -207,6 +228,11 @@ impl Run {
         if let Some(d) = &self.runtime_max {
             let usec = u64::try_from(d.as_micros()).unwrap_or(u64::MAX);
             properties.push(("RuntimeMaxUSec", Value::from(usec)));
+        }
+
+        if let Some(b) = &self.memory_max {
+            let b = u64::try_from(b.get_bytes()).unwrap_or(u64::MAX);
+            properties.push(("MemoryMax", Value::from(b)))
         }
 
         let properties = properties.iter().map(|(x, y)| (*x, y)).collect::<Vec<_>>();

@@ -10,6 +10,7 @@ uuid = { version = "0.8.2", features = ["v4"] }
 futures = "0.3.21"
 zbus = "2.1.1"
 zbus_names = "2.1.0"
+byte-unit = "4.0.14"
 
 [dev-dependencies]
 async-std = { version = "1.10.0", features = ["attributes"] }
