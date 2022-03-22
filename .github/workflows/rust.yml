@@ -21,7 +21,7 @@ jobs:
       - name: Test as Root
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: sudo
-        run: cargo test -- --include-ignored --no-default-features root 
+        run: cargo test --no-default-features -- --include-ignored root 
       - name: Debug
         if: always()
         run: journalctl -b
