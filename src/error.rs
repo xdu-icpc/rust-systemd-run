@@ -20,7 +20,7 @@ pub enum Error {
     /// An error calling systemd to start the transient unit.
     StartFail(zbus::Error),
     /// An error attempting to calculate the time usage of a service.
-    TimeUsageFail(&'static str, OwnedValue, OwnedValue),
+    TimeUsageFail(&'static str, Box<OwnedValue>, Box<OwnedValue>),
 }
 
 /// Alias for a `Result` with the error type `systemd_run::Error`.
