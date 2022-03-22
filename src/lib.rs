@@ -19,6 +19,7 @@ pub struct Run {
     service_name: Option<String>,
     collect_on_fail: bool,
     identity: Identity,
+    runtime_max: Option<Duration>,
 }
 
 /// A transient service running.
@@ -103,6 +104,7 @@ impl Run {
             service_name: None,
             collect_on_fail: false,
             identity: Identity::Session,
+            runtime_max: None,
         }
     }
 
@@ -138,6 +140,17 @@ impl Run {
     /// for details.
     pub fn collect_on_fail(mut self) -> Self {
         self.collect_on_fail = true;
+        self
+    }
+
+    /// Configure a maximum time for the service to run.  If this is used
+    /// and the service has been active for longer than the specified time
+    /// it is terminated and put into a failure state.
+    ///
+    /// Read `RuntimeMaxSec=` in
+    /// [systemd.service(5)](man:systemd.service(5)) for details.
+    pub fn runtime_max(mut self, d: Duration) -> Self {
+        self.runtime_max = Some(d);
         self
     }
 
@@ -189,6 +202,11 @@ impl Run {
                 properties.push(("DynamicUser", Value::from(true)));
             }
             Identity::Session => {}
+        }
+
+        if let Some(d) = &self.runtime_max {
+            let usec = u64::try_from(d.as_micros()).unwrap_or(u64::MAX);
+            properties.push(("RuntimeMaxUSec", Value::from(usec)));
         }
 
         let properties = properties.iter().map(|(x, y)| (*x, y)).collect::<Vec<_>>();
