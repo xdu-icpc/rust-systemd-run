@@ -204,6 +204,8 @@ impl Run {
     /// `Error::AllowedCPUsOnSession` complaining this unsupported
     /// combination.
     ///
+    /// [1]:https://github.com/systemd/systemd/issues/18293
+    ///
     /// This setting is supported only if the unified control group is used,
     /// so it's not available if the feature `unified_cgroup` is disabled.
     /// And, this setting is not available if the feature `systemd_244` is
@@ -235,25 +237,6 @@ impl Run {
 
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
-        let is_session = identity::is_session(&self.identity);
-        let bus = if is_session {
-            Connection::session().await
-        } else {
-            Connection::system().await
-        }
-        .map_err(Error::DBusConnectionFail)?;
-        if self.service_name.is_none() {
-            self.service_name = Some(default_unit_name(&bus)?);
-        }
-        let unit_name = self.service_name.as_ref().unwrap();
-        let unit_path = object_path_from_unit_name(unit_name)?;
-
-        // We must do this before really telling systemd to start the
-        // service.  Or we may miss D-Bus signals, causing StartedRun::wait
-        // to hang forever.  And this also prevents the start of the
-        // transient service in case this fails.
-        let (proxy, stream) = listen_unit_property_change(&bus, &unit_path).await?;
-
         let mut argv = vec![&self.path];
         argv.extend(&self.args);
 
@@ -278,6 +261,7 @@ impl Run {
             properties.push(("RuntimeMaxUSec", Value::from(usec)));
         }
 
+        let is_session = identity::is_session(&self.identity);
         if !self.allowed_cpus.is_empty() {
             if is_session {
                 return Err(Error::AllowedCPUsOnSession);
@@ -310,6 +294,24 @@ impl Run {
         }
 
         let properties = properties.iter().map(|(x, y)| (*x, y)).collect::<Vec<_>>();
+
+        let bus = if is_session {
+            Connection::session().await
+        } else {
+            Connection::system().await
+        }
+        .map_err(Error::DBusConnectionFail)?;
+        if self.service_name.is_none() {
+            self.service_name = Some(default_unit_name(&bus)?);
+        }
+        let unit_name = self.service_name.as_ref().unwrap();
+        let unit_path = object_path_from_unit_name(unit_name)?;
+
+        // We must do this before really telling systemd to start the
+        // service.  Or we may miss D-Bus signals, causing StartedRun::wait
+        // to hang forever.  And this also prevents the start of the
+        // transient service in case this fails.
+        let (proxy, stream) = listen_unit_property_change(&bus, &unit_path).await?;
 
         sd::SystemdManagerProxy::builder(&bus)
             .build()
