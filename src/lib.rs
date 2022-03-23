@@ -321,7 +321,7 @@ impl<'a> StartedRun<'a> {
                 let t0 = Box::new(t0);
                 let t1 = Box::new(t1);
                 return Err(Error::TimeUsageFail("wall", t0, t1));
-            },
+            }
         };
 
         let failed = active_state.unwrap() == "failed";

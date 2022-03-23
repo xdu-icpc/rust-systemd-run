@@ -2,7 +2,7 @@
 mod memory_tests_need_unified_cgroup {
     use byte_unit::Byte;
     use systemd_run::Run;
-    const PATH: &'static str = env!("CARGO_BIN_EXE_memory");
+    const PATH: &'static str = concat!(env!("OUT_DIR"), "/test-aux/memory");
 
     #[async_std::test]
     async fn test_memory_ok() {
