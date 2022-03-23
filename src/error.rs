@@ -21,6 +21,8 @@ pub enum Error {
     StartFail(zbus::Error),
     /// An error attempting to calculate the time usage of a service.
     TimeUsageFail(&'static str, Box<OwnedValue>, Box<OwnedValue>),
+    /// Attempting to use `allowed_cpus` with `Identity::session`.
+    AllowedCPUsOnSession,
 }
 
 /// Alias for a `Result` with the error type `systemd_run::Error`.
@@ -50,6 +52,10 @@ impl Display for Error {
             Self::TimeUsageFail(what, t0, t1) => {
                 write!(f, "cannot calculate {} time usage: ", what)?;
                 write!(f, "t0 = {:?}, t1 = {:?}", t0, t1)
+            }
+            Self::AllowedCPUsOnSession => {
+                let s = "mixing allowed_cpus and session is not supported";
+                write!(f, "{}", s)
             }
         }
     }

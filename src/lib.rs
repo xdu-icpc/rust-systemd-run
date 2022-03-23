@@ -23,6 +23,7 @@ pub struct Run {
     runtime_max: Option<Duration>,
     memory_max: Option<Byte>,
     memory_swap_max: Option<Byte>,
+    allowed_cpus: Vec<usize>,
 }
 
 /// A transient service running.
@@ -110,6 +111,7 @@ impl Run {
             runtime_max: None,
             memory_max: None,
             memory_swap_max: None,
+            allowed_cpus: vec![],
         }
     }
 
@@ -183,6 +185,36 @@ impl Run {
         self
     }
 
+    /// Restrict processes to be executed on specific CPUs.
+    ///
+    /// Setting AllowedCPUs= or StartupAllowedCPUs= doesn't guarantee that
+    /// all of the CPUs will be used by the processes as it may be limited
+    /// by parent units.
+    ///
+    /// Setting an empty list of CPUs will allow the processes of the unit
+    /// to run on **all** CPUs.  This is also the default behavior if this
+    /// is not used.
+    ///
+    /// Read `AllowedCPUs=` in
+    /// [systemd.resource-control(5)](man:systemd.resource-control(5))
+    /// for details.
+    ///
+    /// Currently a non-empty setting of this [does not work reliably][1]
+    /// with `Identity::session()`, so `Run::start` will return an
+    /// `Error::AllowedCPUsOnSession` complaining this unsupported
+    /// combination.
+    ///
+    /// This setting is supported only if the unified control group is used,
+    /// so it's not available if the feature `unified_cgroup` is disabled.
+    /// And, this setting is not available if the feature `systemd_244` is
+    /// disabled.
+    #[cfg(feature = "systemd_244")]
+    #[cfg(feature = "unified_cgroup")]
+    pub fn allowed_cpus(mut self, cpus: &[usize]) -> Self {
+        self.allowed_cpus = cpus.to_owned();
+        self
+    }
+
     /// Specify the absolute limit on swap usage of the executed
     /// processes in this unit.
     ///
@@ -203,7 +235,8 @@ impl Run {
 
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
-        let bus = if identity::is_session(&self.identity) {
+        let is_session = identity::is_session(&self.identity);
+        let bus = if is_session {
             Connection::session().await
         } else {
             Connection::system().await
@@ -243,6 +276,21 @@ impl Run {
         if let Some(d) = &self.runtime_max {
             let usec = u64::try_from(d.as_micros()).unwrap_or(u64::MAX);
             properties.push(("RuntimeMaxUSec", Value::from(usec)));
+        }
+
+        if !self.allowed_cpus.is_empty() {
+            if is_session {
+                return Err(Error::AllowedCPUsOnSession);
+            }
+            let mut cpu_set = vec![];
+            for &cpu in &self.allowed_cpus {
+                let (x, y) = (cpu / 8, cpu % 8);
+                if cpu_set.len() <= x {
+                    cpu_set.resize(x + 1, 0u8);
+                }
+                cpu_set[x] |= 1 << y;
+            }
+            properties.push(("AllowedCPUs", Value::from(cpu_set)));
         }
 
         let memory_max_name = if cfg!(feature = "systemd_231") {
