@@ -135,7 +135,7 @@ impl Run {
     }
 
     /// Set an identity to run the transient service.  The default is
-    /// `Identity::session()`.
+    /// [Identity::session()].
     pub fn identity(mut self, i: Identity) -> Self {
         self.identity = i;
         self
@@ -157,8 +157,8 @@ impl Run {
     /// and the service has been active for longer than the specified time
     /// it is terminated and put into a failure state.
     ///
-    /// A `Duration` exceeding `u64::MAX` microseconds is trimmed to
-    /// `u64::MAX` microseconds silently.
+    /// A [Duration] exceeding [u64::MAX] microseconds is trimmed to
+    /// [u64::MAX] microseconds silently.
     ///
     /// Read `RuntimeMaxSec=` in
     /// [systemd.service(5)](man:systemd.service(5)) for details.
@@ -171,7 +171,7 @@ impl Run {
     /// processes in this unit. If memory usage cannot be contained under
     /// the limit, out-of-memory killer is invoked inside the unit.
     ///
-    /// A `Byte` exceeding `u64::MAX` bytes is trimmed to `u64::MAX` bytes
+    /// A [Byte] exceeding [u64::MAX] bytes is trimmed to [u64::MAX] bytes
     /// silently.
     ///
     /// Read `MemoryMax=` in
@@ -182,6 +182,24 @@ impl Run {
     /// used instead if `MemoryMax=` for compatibility.
     pub fn memory_max(mut self, d: Byte) -> Self {
         self.memory_max = Some(d);
+        self
+    }
+
+    /// Specify the absolute limit on swap usage of the executed
+    /// processes in this unit.
+    ///
+    /// This setting is supported only if the unified control group is used,
+    /// so it's not available if the feature `unified_cgroup` is disabled.
+    ///
+    /// A [Byte] exceeding [u64::MAX] bytes is trimmed to [u64::MAX] bytes
+    /// silently.
+    ///
+    /// Read `MemorySwapMax=` in
+    /// [systemd.resource-control(5)](man:systemd.resource-control(5))
+    /// for details.
+    #[cfg(feature = "unified_cgroup")]
+    pub fn memory_swap_max(mut self, d: Byte) -> Self {
+        self.memory_swap_max = Some(d);
         self
     }
 
@@ -200,8 +218,8 @@ impl Run {
     /// for details.
     ///
     /// Currently a non-empty setting of this [does not work reliably][1]
-    /// with `Identity::session()`, so `Run::start` will return an
-    /// `Error::AllowedCPUsOnSession` complaining this unsupported
+    /// with [Identity::session()], so [Run::start] will return an
+    /// [Error::AllowedCPUsOnSession] complaining this unsupported
     /// combination.
     ///
     /// [1]:https://github.com/systemd/systemd/issues/18293
@@ -214,24 +232,6 @@ impl Run {
     #[cfg(feature = "unified_cgroup")]
     pub fn allowed_cpus(mut self, cpus: &[usize]) -> Self {
         self.allowed_cpus = cpus.to_owned();
-        self
-    }
-
-    /// Specify the absolute limit on swap usage of the executed
-    /// processes in this unit.
-    ///
-    /// This setting is supported only if the unified control group is used,
-    /// so it's not available if the feature `unified_cgroup` is disabled.
-    ///
-    /// A `Byte` exceeding `u64::MAX` bytes is trimmed to `u64::MAX` bytes
-    /// silently.
-    ///
-    /// Read `MemorySwapMax=` in
-    /// [systemd.resource-control(5)](man:systemd.resource-control(5))
-    /// for details.
-    #[cfg(feature = "unified_cgroup")]
-    pub fn memory_swap_max(mut self, d: Byte) -> Self {
-        self.memory_swap_max = Some(d);
         self
     }
 

@@ -21,11 +21,12 @@ pub enum Error {
     StartFail(zbus::Error),
     /// An error attempting to calculate the time usage of a service.
     TimeUsageFail(&'static str, Box<OwnedValue>, Box<OwnedValue>),
-    /// Attempting to use `allowed_cpus` with `Identity::session`.
+    /// Attempting to use [allowed_cpus][crate::Run::allowed_cpus] with
+    /// [Identity::session()][crate::Identity::session].
     AllowedCPUsOnSession,
 }
 
-/// Alias for a `Result` with the error type `systemd_run::Error`.
+/// Alias for a [Result][std::result::Result] with the error type [Error].
 pub type Result<T> = std::result::Result<T, Error>;
 
 impl Display for Error {
