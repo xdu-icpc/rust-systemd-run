@@ -21,9 +21,10 @@ pub enum Error {
     StartFail(zbus::Error),
     /// An error attempting to calculate the time usage of a service.
     TimeUsageFail(&'static str, Box<OwnedValue>, Box<OwnedValue>),
-    /// Attempting to use [allowed_cpus][crate::Run::allowed_cpus] with
-    /// [Identity::session()][crate::Identity::session].
-    AllowedCPUsOnSession,
+    /// Attempting to use a setting along with
+    /// [Identity::session()][crate::Identity::session] and the combination
+    /// is not supported.
+    UnsupportedSettingOnSession(&'static str),
 }
 
 /// Alias for a [Result][std::result::Result] with the error type [Error].
@@ -54,9 +55,8 @@ impl Display for Error {
                 write!(f, "cannot calculate {} time usage: ", what)?;
                 write!(f, "t0 = {:?}, t1 = {:?}", t0, t1)
             }
-            Self::AllowedCPUsOnSession => {
-                let s = "mixing allowed_cpus and session is not supported";
-                write!(f, "{}", s)
+            Self::UnsupportedSettingOnSession(what) => {
+                write!(f, "mixing {} and session is not supported", what)
             }
         }
     }

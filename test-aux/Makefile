@@ -4,7 +4,7 @@ CXXFLAGS = -O2 -g
 objdir = $(OUT_DIR)/test-aux
 objpfx = $(objdir)/
 
-all: $(objpfx)memory $(objpfx)cpuset
+all: $(objpfx)memory $(objpfx)threads
 
 $(objdir):
 	mkdir -pv $@
@@ -12,5 +12,5 @@ $(objdir):
 $(objpfx)memory: memory.c $(objdir)
 	$(CC) $(CFLAGS) $< -o $@
 
-$(objpfx)cpuset: cpuset.cc $(objdir)
+$(objpfx)threads: threads.cc $(objdir)
 	$(CXX) $(CXXFLAGS) $< -o $@ -lrt

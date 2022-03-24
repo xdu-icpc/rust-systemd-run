@@ -24,6 +24,7 @@ pub struct Run {
     memory_max: Option<Byte>,
     memory_swap_max: Option<Byte>,
     allowed_cpus: Vec<usize>,
+    cpu_quota: Option<u64>,
 }
 
 /// A transient service running.
@@ -112,6 +113,7 @@ impl Run {
             memory_max: None,
             memory_swap_max: None,
             allowed_cpus: vec![],
+            cpu_quota: None,
         }
     }
 
@@ -203,6 +205,29 @@ impl Run {
         self
     }
 
+    /// Assign the specified CPU time quota to the processes executed.
+    /// Takes a percentage value.  The percentage specifies how much CPU
+    /// time the unit shall get at maximum, relativeto the total CPU time
+    /// available on one CPU. Use values > 100 for allotting CPU time on
+    /// more than one CPU.
+    ///
+    /// Currently a non-empty setting of this does not work with the default
+    /// Systemd configuration with [Identity::session()], so [Run::start]
+    /// will return an [Error::UnsupportedSettingOnSession] complaining this
+    /// unsupported combination.
+    ///
+    /// The value will be trimmed to [u64::MAX] / 10000 silently if it
+    /// exceeds this upper limit.
+    ///
+    /// Read `CPUQuota=` in
+    /// [systemd.resource-control(5)](man:systemd.resource-control(5)) for
+    /// details.
+    #[cfg(feature = "systemd_213")]
+    pub fn cpu_quota(mut self, percent: std::num::NonZeroU64) -> Self {
+        self.cpu_quota = Some(percent.into());
+        self
+    }
+
     /// Restrict processes to be executed on specific CPUs.
     ///
     /// Setting AllowedCPUs= or StartupAllowedCPUs= doesn't guarantee that
@@ -217,12 +242,10 @@ impl Run {
     /// [systemd.resource-control(5)](man:systemd.resource-control(5))
     /// for details.
     ///
-    /// Currently a non-empty setting of this [does not work reliably][1]
-    /// with [Identity::session()], so [Run::start] will return an
-    /// [Error::AllowedCPUsOnSession] complaining this unsupported
-    /// combination.
-    ///
-    /// [1]:https://github.com/systemd/systemd/issues/18293
+    /// Currently a non-empty setting of this does not work with the default
+    /// Systemd configuration with [Identity::session()], so [Run::start]
+    /// will return an [Error::UnsupportedSettingOnSession] complaining this
+    /// unsupported combination.
     ///
     /// This setting is supported only if the unified control group is used,
     /// so it's not available if the feature `unified_cgroup` is disabled.
@@ -264,7 +287,7 @@ impl Run {
         let is_session = identity::is_session(&self.identity);
         if !self.allowed_cpus.is_empty() {
             if is_session {
-                return Err(Error::AllowedCPUsOnSession);
+                return Err(Error::UnsupportedSettingOnSession("allowed_cpus"));
             }
             let mut cpu_set = vec![];
             for &cpu in &self.allowed_cpus {
@@ -291,6 +314,14 @@ impl Run {
                 let b = u64::try_from(v.get_bytes()).unwrap_or(u64::MAX);
                 properties.push((k, Value::from(b)))
             }
+        }
+
+        if let Some(v) = self.cpu_quota {
+            if is_session {
+                return Err(Error::UnsupportedSettingOnSession("cpu_quota"));
+            }
+            let v = std::cmp::min(v, u64::MAX / 10000);
+            properties.push(("CPUQuotaPerSecUSec", Value::from(v * 10000)));
         }
 
         let properties = properties.iter().map(|(x, y)| (*x, y)).collect::<Vec<_>>();
