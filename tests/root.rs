@@ -97,7 +97,7 @@ async fn test_root_allowed_cpus() {
         .expect("should be able to get the status of the Run");
     assert!(!r.is_failed(), "test program should exit normally");
     assert!(
-        r.wall_time_usage() > Duration::from_secs(1),
+        r.wall_time_usage() >= Duration::from_secs(1),
         "test program should run for at least 1s on only one CPU"
     );
 }
