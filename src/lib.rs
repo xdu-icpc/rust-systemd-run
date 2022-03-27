@@ -25,6 +25,8 @@ pub struct Run {
     memory_swap_max: Option<Byte>,
     allowed_cpus: Vec<usize>,
     cpu_quota: Option<u64>,
+    private_network: bool,
+    private_ipc: bool,
 }
 
 /// A transient service running.
@@ -114,6 +116,8 @@ impl Run {
             memory_swap_max: None,
             allowed_cpus: vec![],
             cpu_quota: None,
+            private_network: false,
+            private_ipc: false,
         }
     }
 
@@ -212,7 +216,7 @@ impl Run {
     /// more than one CPU.
     ///
     /// Currently a non-empty setting of this does not work with the default
-    /// Systemd configuration with [Identity::session()], so [Run::start]
+    /// Systemd configuration and [Identity::session()], so [Run::start]
     /// will return an [Error::UnsupportedSettingOnSession] complaining this
     /// unsupported combination.
     ///
@@ -246,7 +250,7 @@ impl Run {
     /// for details.
     ///
     /// Currently a non-empty setting of this does not work with the default
-    /// Systemd configuration with [Identity::session()], so [Run::start]
+    /// Systemd configuration and [Identity::session()], so [Run::start]
     /// will return an [Error::UnsupportedSettingOnSession] complaining this
     /// unsupported combination.
     ///
@@ -261,8 +265,72 @@ impl Run {
         self
     }
 
+    /// If this setting is used, sets up a new network namespace
+    /// for the executed processes and configures only the loopback network
+    /// device "lo" inside it. No other network devices will be available
+    /// to the executed process. This is useful to turn off network access
+    /// by the executed process.
+    ///
+    /// Read `PrivateNetwork=` in [systemd.exec(5)](man:systemd.exec(5)) for
+    /// details.
+    ///
+    /// This setting is not available if the feature `systemd_227` is
+    /// disabled.  And, it will be ignored silently if `CONFIG_NET_NS` is
+    /// not enabled in the configuration of the running kernel.
+    ///
+    /// This setting does not work with [Identity::session()], so
+    /// [Run::start] will return an [Error::UnsupportedSettingOnSession]
+    /// complaining this unsupported combination.
+    #[cfg(feature = "systemd_227")]
+    pub fn private_network(mut self) -> Self {
+        self.private_network = true;
+        self
+    }
+
+    /// If this setting is used, sets up a new IPC namespace
+    /// for the executed processes. Each IPC namespace has its own set of
+    /// System V IPC identifiers and its own POSIX message queue file
+    /// system. This is useful to avoid name clash of IPC identifiers.
+    ///
+    /// Read `PrivateIPC=` in [systemd.exec(5)](man:systemd.exec(5)) for
+    /// details.
+    ///
+    /// This setting is not available if the feature `systemd_249` is
+    /// disabled.  And, it will be ignored silently if `CONFIG_IPC_NS` is
+    /// not enabled in the configuration of the running kernel.
+    ///
+    /// This setting does not work with [Identity::session()], so
+    /// [Run::start] will return an [Error::UnsupportedSettingOnSession]
+    /// complaining this unsupported combination.
+    #[cfg(feature = "systemd_249")]
+    pub fn private_ipc(mut self) -> Self {
+        self.private_ipc = true;
+        self
+    }
+
+    fn check_session(&self) -> Result<()> {
+        if !identity::is_session(&self.identity) {
+            return Ok(());
+        }
+
+        for (name, cond) in [
+            ("allowed_cpus", !self.allowed_cpus.is_empty()),
+            ("cpu_quota", self.cpu_quota.is_some()),
+            ("private_network", self.private_network),
+            ("private_ipc", self.private_ipc),
+        ] {
+            if cond {
+                return Err(Error::UnsupportedSettingOnSession(name));
+            }
+        }
+
+        Ok(())
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
+        self.check_session()?;
+
         let mut argv = vec![&self.path];
         argv.extend(&self.args);
 
@@ -287,11 +355,7 @@ impl Run {
             properties.push(("RuntimeMaxUSec", Value::from(usec)));
         }
 
-        let is_session = identity::is_session(&self.identity);
         if !self.allowed_cpus.is_empty() {
-            if is_session {
-                return Err(Error::UnsupportedSettingOnSession("allowed_cpus"));
-            }
             let mut cpu_set = vec![];
             for &cpu in &self.allowed_cpus {
                 let (x, y) = (cpu / 8, cpu % 8);
@@ -320,16 +384,23 @@ impl Run {
         }
 
         if let Some(v) = self.cpu_quota {
-            if is_session {
-                return Err(Error::UnsupportedSettingOnSession("cpu_quota"));
-            }
             let v = std::cmp::min(v, u64::MAX / 10000);
             properties.push(("CPUQuotaPerSecUSec", Value::from(v * 10000)));
         }
 
+        for (k, v) in [
+            ("PrivateNetwork", self.private_network),
+            ("PrivateIPC", self.private_ipc),
+        ] {
+            // Don't push false values as they may break on old Systemd.
+            if v {
+                properties.push((k, Value::from(true)))
+            }
+        }
+
         let properties = properties.iter().map(|(x, y)| (*x, y)).collect::<Vec<_>>();
 
-        let bus = if is_session {
+        let bus = if identity::is_session(&self.identity) {
             Connection::session().await
         } else {
             Connection::system().await

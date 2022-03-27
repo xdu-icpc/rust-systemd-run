@@ -16,9 +16,11 @@ byte-unit = "4.0.14"
 async-std = { version = "1.10.0", features = ["attributes"] }
 
 [features]
-default = ["unified_cgroup", "systemd_244"]
+default = ["unified_cgroup", "systemd_249"]
 unified_cgroup = ["systemd_231"]
+systemd_249 = ["systemd_244"]
 systemd_244 = ["systemd_236"]
 systemd_236 = ["systemd_231"]
-systemd_231 = ["systemd_213"]
+systemd_231 = ["systemd_227"]
+systemd_227 = ["systemd_213"]
 systemd_213 = []
