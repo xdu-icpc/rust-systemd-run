@@ -230,13 +230,16 @@ impl Run {
 
     /// Restrict processes to be executed on specific CPUs.
     ///
-    /// Setting AllowedCPUs= or StartupAllowedCPUs= doesn't guarantee that
+    /// This setting doesn't guarantee that
     /// all of the CPUs will be used by the processes as it may be limited
     /// by parent units.
     ///
     /// Setting an empty list of CPUs will allow the processes of the unit
     /// to run on **all** CPUs.  This is also the default behavior if this
     /// is not used.
+    ///
+    /// Referring to an offline or non-existing CPU in this setting causes
+    /// Systemd to **ignore this setting silently**.
     ///
     /// Read `AllowedCPUs=` in
     /// [systemd.resource-control(5)](man:systemd.resource-control(5))
