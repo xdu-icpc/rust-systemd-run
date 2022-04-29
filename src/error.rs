@@ -21,10 +21,6 @@ pub enum Error {
     StartFail(zbus::Error),
     /// An error attempting to calculate the time usage of a service.
     TimeUsageFail(&'static str, Box<OwnedValue>, Box<OwnedValue>),
-    /// Attempting to use a setting along with
-    /// [Identity::session()][crate::Identity::session] and the combination
-    /// is not supported.
-    UnsupportedSettingOnSession(&'static str),
 }
 
 /// Alias for a [Result][std::result::Result] with the error type [Error].
@@ -54,9 +50,6 @@ impl Display for Error {
             Self::TimeUsageFail(what, t0, t1) => {
                 write!(f, "cannot calculate {} time usage: ", what)?;
                 write!(f, "t0 = {:?}, t1 = {:?}", t0, t1)
-            }
-            Self::UnsupportedSettingOnSession(what) => {
-                write!(f, "mixing {} and session is not supported", what)
             }
         }
     }

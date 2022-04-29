@@ -11,7 +11,51 @@ mod identity;
 mod sd;
 
 pub use error::{Error, Result};
-pub use identity::Identity;
+
+/// The identity for running a transient service on the system service
+/// manager.
+pub struct Identity {
+    inner: identity::Identity,
+}
+
+impl Identity {
+    /// Run the transient service as the the UNIX user `x` and group `y`
+    /// for `UserGroup(x, y)`.
+    ///
+    /// You need to be the `root` user to start a transient service with
+    /// this.  Read `User=` and `Group=` in
+    /// [`systemd.exec(5)`](man:systemd.exec(5)) for details.
+    pub fn user_group<U: AsRef<str>, G: AsRef<str>>(u: U, g: G) -> Self {
+        Self {
+            inner: identity::Identity::user_group(u, g),
+        }
+    }
+
+    /// Shorthand for `Self::user_group(u, u)`.
+    pub fn user<T: AsRef<str>>(u: T) -> Self {
+        Self::user_group(u.as_ref(), u.as_ref())
+    }
+
+    /// Shorthand for `Self::user("root")`.
+    pub fn root() -> Self {
+        Self::user("root")
+    }
+
+    /// Run the transient service as a UNIX user and group pair dynamically
+    /// allocated.
+    ///
+    /// This is unavailable if the feature `systemd_231` is disabled.
+    ///
+    /// You need to be the `root` user to start a transient service with
+    /// this.  Read `DynamicUser=` in
+    /// [`systemd.exec(5)`](man:systemd.exec(5)) for details.
+    #[cfg(feature = "systemd_231")]
+    pub fn dynamic() -> Self {
+        Self {
+            inner: identity::Identity::dynamic(),
+        }
+    }
+}
 
 /// Information of a transient service for running on the system service
 /// manager.
@@ -20,7 +64,7 @@ pub struct RunSystem {
     args: Vec<String>,
     service_name: Option<String>,
     collect_on_fail: bool,
-    identity: Identity,
+    identity: identity::Identity,
     runtime_max: Option<Duration>,
     memory_max: Option<Byte>,
     memory_swap_max: Option<Byte>,
@@ -113,7 +157,10 @@ impl RunUser {
     /// Create a new [RunUser] from a path to executable.
     pub fn new<T: AsRef<str>>(path: T) -> Self {
         Self {
-            inner: RunSystem::new(path).identity(Identity::session()),
+            inner: RunSystem {
+                identity: identity::Identity::session(),
+                ..RunSystem::new(path)
+            },
         }
     }
 
@@ -214,7 +261,7 @@ impl RunSystem {
             args: vec![],
             service_name: None,
             collect_on_fail: false,
-            identity: Identity::root(),
+            identity: Identity::root().inner,
             runtime_max: None,
             memory_max: None,
             memory_swap_max: None,
@@ -247,7 +294,7 @@ impl RunSystem {
     /// Set an identity to run the transient service.  The default is
     /// [Identity::root()].
     pub fn identity(mut self, i: Identity) -> Self {
-        self.identity = i;
+        self.identity = i.inner;
         self
     }
 
