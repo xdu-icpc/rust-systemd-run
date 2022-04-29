@@ -14,7 +14,7 @@ finish.
 ```rust
 #[async_std::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-	let status = systemd_run::Run::new("/bin/true")
+	let status = systemd_run::RunUser::new("/bin/true")
 		.start()
 		.await?
 		.wait()

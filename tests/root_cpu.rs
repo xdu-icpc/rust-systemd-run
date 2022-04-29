@@ -1,5 +1,5 @@
 use std::time::Duration;
-use systemd_run::{Identity, Run};
+use systemd_run::{Identity, RunSystem};
 
 #[async_std::test]
 #[ignore]
@@ -7,7 +7,7 @@ use systemd_run::{Identity, Run};
 #[cfg(feature = "unified_cgroup")]
 async fn test_root_allowed_cpus() {
     const PATH: &'static str = concat!(env!("OUT_DIR"), "/test-aux/threads");
-    let r = Run::new(PATH)
+    let r = RunSystem::new(PATH)
         .allowed_cpus(&[0])
         .identity(Identity::user_group("nobody", "nogroup"))
         .start()
@@ -28,7 +28,7 @@ async fn test_root_allowed_cpus() {
 #[cfg(feature = "systemd_213")]
 async fn test_root_cpu_quota() {
     const PATH: &'static str = concat!(env!("OUT_DIR"), "/test-aux/threads");
-    let r = Run::new(PATH)
+    let r = RunSystem::new(PATH)
         .cpu_quota(std::num::NonZeroU64::new(100).unwrap())
         .identity(Identity::user_group("nobody", "nogroup"))
         .start()

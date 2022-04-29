@@ -1,12 +1,12 @@
 #[cfg(feature = "unified_cgroup")]
 mod memory_tests_need_unified_cgroup {
     use byte_unit::Byte;
-    use systemd_run::Run;
+    use systemd_run::RunUser;
     const PATH: &'static str = concat!(env!("OUT_DIR"), "/test-aux/memory");
 
     #[async_std::test]
     async fn test_memory_ok() {
-        let r = Run::new(PATH)
+        let r = RunUser::new(PATH)
             .memory_max(Byte::from_str("384 MB").unwrap())
             .memory_swap_max(Byte::from(0usize))
             .start()
@@ -24,7 +24,7 @@ mod memory_tests_need_unified_cgroup {
     #[async_std::test]
     #[cfg(feature = "systemd_236")]
     async fn test_memory_limit_exceed() {
-        let r = Run::new(PATH)
+        let r = RunUser::new(PATH)
             .memory_max(Byte::from_str("128 MB").unwrap())
             .memory_swap_max(Byte::from(0usize))
             .collect_on_fail()

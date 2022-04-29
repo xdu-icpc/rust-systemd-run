@@ -13,8 +13,9 @@ mod sd;
 pub use error::{Error, Result};
 pub use identity::Identity;
 
-/// Information of a transient service.
-pub struct Run {
+/// Information of a transient service for running on the system service
+/// manager.
+pub struct RunSystem {
     path: String,
     args: Vec<String>,
     service_name: Option<String>,
@@ -27,6 +28,12 @@ pub struct Run {
     cpu_quota: Option<u64>,
     private_network: bool,
     private_ipc: bool,
+}
+
+/// Information of a transient service for running on the per-user service
+/// manager.
+pub struct RunUser {
+    inner: RunSystem,
 }
 
 /// A transient service running.
@@ -102,15 +109,112 @@ async fn listen_unit_property_change<'a>(
     Ok((proxy, stream))
 }
 
-impl Run {
-    /// Create a new Run from a path to executable.
+impl RunUser {
+    /// Create a new [RunUser] from a path to executable.
+    pub fn new<T: AsRef<str>>(path: T) -> Self {
+        Self {
+            inner: RunSystem::new(path).identity(Identity::session()),
+        }
+    }
+
+    /// Append an argument to the command line.
+    pub fn arg<T: AsRef<str>>(self, arg: T) -> Self {
+        Self {
+            inner: self.inner.arg(arg),
+        }
+    }
+
+    /// Set a custom name for the transient service.
+    ///
+    /// If the name is not terminated with `.service`, it will be appended
+    /// automatically.
+    pub fn service_name<T: AsRef<str>>(self, name: T) -> Self {
+        Self {
+            inner: self.inner.service_name(name),
+        }
+    }
+
+    /// Unload the transient service even if it fails.
+    ///
+    /// This is not available if `systemd_236` is disabled.
+    ///
+    /// Read `CollectMode=` in [systemd.unit(5)](man:systemd.unit(5))
+    /// for details.
+    #[cfg(feature = "systemd_236")]
+    pub fn collect_on_fail(self) -> Self {
+        Self {
+            inner: self.inner.collect_on_fail(),
+        }
+    }
+
+    /// Configure a maximum time for the service to run.  If this is used
+    /// and the service has been active for longer than the specified time
+    /// it is terminated and put into a failure state.
+    ///
+    /// A [Duration] exceeding [u64::MAX] microseconds is trimmed to
+    /// [u64::MAX] microseconds silently.
+    ///
+    /// Read `RuntimeMaxSec=` in
+    /// [systemd.service(5)](man:systemd.service(5)) for details.
+    pub fn runtime_max(self, d: Duration) -> Self {
+        Self {
+            inner: self.inner.runtime_max(d),
+        }
+    }
+
+    /// Specify the absolute limit on memory usage of the executed
+    /// processes in this unit. If memory usage cannot be contained under
+    /// the limit, out-of-memory killer is invoked inside the unit.
+    ///
+    /// A [Byte] exceeding [u64::MAX] bytes is trimmed to [u64::MAX] bytes
+    /// silently.
+    ///
+    /// Read `MemoryMax=` in
+    /// [systemd.resource-control(5)](man:systemd.resource-control(5))
+    /// for details.
+    ///
+    /// If the feature `systemd_231` is disabled, `MemoryLimit=` will be
+    /// used instead if `MemoryMax=` for compatibility.
+    pub fn memory_max(self, d: Byte) -> Self {
+        Self {
+            inner: self.inner.memory_max(d),
+        }
+    }
+
+    /// Specify the absolute limit on swap usage of the executed
+    /// processes in this unit.
+    ///
+    /// This setting is supported only if the unified control group is used,
+    /// so it's not available if the feature `unified_cgroup` is disabled.
+    ///
+    /// A [Byte] exceeding [u64::MAX] bytes is trimmed to [u64::MAX] bytes
+    /// silently.
+    ///
+    /// Read `MemorySwapMax=` in
+    /// [systemd.resource-control(5)](man:systemd.resource-control(5))
+    /// for details.
+    #[cfg(feature = "unified_cgroup")]
+    pub fn memory_swap_max(self, d: Byte) -> Self {
+        Self {
+            inner: self.inner.memory_swap_max(d),
+        }
+    }
+
+    /// Start the transient service.
+    pub async fn start<'a>(self) -> Result<StartedRun<'a>> {
+        self.inner.start().await
+    }
+}
+
+impl RunSystem {
+    /// Create a new [RunSystem] from a path to executable.
     pub fn new<T: AsRef<str>>(path: T) -> Self {
         Self {
             path: path.as_ref().to_string(),
             args: vec![],
             service_name: None,
             collect_on_fail: false,
-            identity: Identity::session(),
+            identity: Identity::root(),
             runtime_max: None,
             memory_max: None,
             memory_swap_max: None,
@@ -141,7 +245,7 @@ impl Run {
     }
 
     /// Set an identity to run the transient service.  The default is
-    /// [Identity::session()].
+    /// [Identity::root()].
     pub fn identity(mut self, i: Identity) -> Self {
         self.identity = i;
         self
@@ -215,11 +319,6 @@ impl Run {
     /// available on one CPU. Use values > 100 for allotting CPU time on
     /// more than one CPU.
     ///
-    /// Currently a non-empty setting of this does not work with the default
-    /// Systemd configuration and [Identity::session()], so [Run::start]
-    /// will return an [Error::UnsupportedSettingOnSession] complaining this
-    /// unsupported combination.
-    ///
     /// The value will be trimmed to [u64::MAX] / 10000 silently if it
     /// exceeds this upper limit.
     ///
@@ -249,11 +348,6 @@ impl Run {
     /// [systemd.resource-control(5)](man:systemd.resource-control(5))
     /// for details.
     ///
-    /// Currently a non-empty setting of this does not work with the default
-    /// Systemd configuration and [Identity::session()], so [Run::start]
-    /// will return an [Error::UnsupportedSettingOnSession] complaining this
-    /// unsupported combination.
-    ///
     /// This setting is supported only if the unified control group is used,
     /// so it's not available if the feature `unified_cgroup` is disabled.
     /// And, this setting is not available if the feature `systemd_244` is
@@ -277,10 +371,6 @@ impl Run {
     /// This setting is not available if the feature `systemd_227` is
     /// disabled.  And, it will be ignored silently if `CONFIG_NET_NS` is
     /// not enabled in the configuration of the running kernel.
-    ///
-    /// This setting does not work with [Identity::session()], so
-    /// [Run::start] will return an [Error::UnsupportedSettingOnSession]
-    /// complaining this unsupported combination.
     #[cfg(feature = "systemd_227")]
     pub fn private_network(mut self) -> Self {
         self.private_network = true;
@@ -298,39 +388,14 @@ impl Run {
     /// This setting is not available if the feature `systemd_249` is
     /// disabled.  And, it will be ignored silently if `CONFIG_IPC_NS` is
     /// not enabled in the configuration of the running kernel.
-    ///
-    /// This setting does not work with [Identity::session()], so
-    /// [Run::start] will return an [Error::UnsupportedSettingOnSession]
-    /// complaining this unsupported combination.
     #[cfg(feature = "systemd_249")]
     pub fn private_ipc(mut self) -> Self {
         self.private_ipc = true;
         self
     }
 
-    fn check_session(&self) -> Result<()> {
-        if !identity::is_session(&self.identity) {
-            return Ok(());
-        }
-
-        for (name, cond) in [
-            ("allowed_cpus", !self.allowed_cpus.is_empty()),
-            ("cpu_quota", self.cpu_quota.is_some()),
-            ("private_network", self.private_network),
-            ("private_ipc", self.private_ipc),
-        ] {
-            if cond {
-                return Err(Error::UnsupportedSettingOnSession(name));
-            }
-        }
-
-        Ok(())
-    }
-
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
-        self.check_session()?;
-
         let mut argv = vec![&self.path];
         argv.extend(&self.args);
 
@@ -430,7 +495,7 @@ impl Run {
 }
 
 impl<'a> StartedRun<'a> {
-    /// Wait until a `StartedRun` is finished.
+    /// Wait until a [StartedRun] is finished.
     pub async fn wait(self) -> Result<FinishedRun> {
         let mut stream = self.stream;
         let mut has_job = false;

@@ -1,9 +1,9 @@
 use std::time::Duration;
-use systemd_run::Run;
+use systemd_run::RunUser;
 
 #[async_std::test]
 async fn test_true() {
-    let r = Run::new("/bin/true")
+    let r = RunUser::new("/bin/true")
         .start()
         .await
         .expect("should be able to start /bin/true")
@@ -16,7 +16,7 @@ async fn test_true() {
 #[async_std::test]
 #[cfg(feature = "systemd_236")]
 async fn test_false() {
-    let r = Run::new("/bin/false")
+    let r = RunUser::new("/bin/false")
         .collect_on_fail()
         .start()
         .await
@@ -29,7 +29,7 @@ async fn test_false() {
 
 #[async_std::test]
 async fn test_wall_time_usage() {
-    let r = Run::new("/bin/sleep")
+    let r = RunUser::new("/bin/sleep")
         .arg("1")
         .start()
         .await
@@ -44,7 +44,7 @@ async fn test_wall_time_usage() {
 #[async_std::test]
 #[cfg(feature = "systemd_236")]
 async fn test_runtime_max() {
-    let r = Run::new("/bin/sleep")
+    let r = RunUser::new("/bin/sleep")
         .arg("2")
         .runtime_max(Duration::from_secs(1))
         .collect_on_fail()

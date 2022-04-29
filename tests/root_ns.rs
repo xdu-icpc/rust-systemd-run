@@ -1,10 +1,10 @@
-use systemd_run::{Identity, Run};
+use systemd_run::{Identity, RunSystem};
 
 #[async_std::test]
 #[ignore]
 #[cfg(feature = "systemd_227")]
 async fn test_root_private_network() {
-    let r = Run::new("/usr/bin/wget")
+    let r = RunSystem::new("/usr/bin/wget")
         .arg("https://example.org/")
         .identity(Identity::dynamic())
         .start()
@@ -27,7 +27,7 @@ async fn test_root_private_ipc() {
     // Run twice, if IPC namespace seperation is not in-effect the secmond
     // run will fail.
     for _ in 0..2 {
-        let r = Run::new(PATH)
+        let r = RunSystem::new(PATH)
             .identity(Identity::user_group("nobody", "nogroup"))
             .start()
             .await
