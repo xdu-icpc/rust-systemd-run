@@ -36,7 +36,7 @@ async fn test_root_mnt_w(f: fn() -> Mount) {
 
     // Mount the filesystem ro this time, now it shouldn't be possible to modify
     // the content.
-    let r = RunSystem::new("rm")
+    let r = RunSystem::new("/bin/rm")
         .arg("/tmp/rust-systemd-run-test")
         .mount("/tmp", f())
         .collect_on_fail()
@@ -82,7 +82,7 @@ async fn test_root_mnt_image() {
     const IMG: &'static str = concat!(env!("OUT_DIR"), "/test-aux/floppy.img");
 
     // Create a floppy-like image first
-    let r = RunSystem::new("dd")
+    let r = RunSystem::new("/bin/dd")
         .arg("if=/dev/zero")
         .arg("of=".to_string() + IMG)
         .arg("bs=1024")
@@ -95,7 +95,7 @@ async fn test_root_mnt_image() {
         .expect("this test requires a runable dd");
     assert!(!r.is_failed(), "this test requires a functional dd");
 
-    let r = RunSystem::new("mkfs.vfat")
+    let r = RunSystem::new("/sbin/mkfs.vfat")
         .arg(IMG)
         .start()
         .await
