@@ -5,3 +5,4 @@ minimal
 floppy.img
 rw
 rust-systemd-run-test
+nosgid

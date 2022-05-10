@@ -138,3 +138,65 @@ async fn test_root_mnt_ignore_nonexist() {
         .expect("should be able to get the status of the Run");
     assert!(!r.is_failed(), "/bin/true should run successfully");
 }
+
+#[cfg(feature = "systemd_236")]
+async fn test_devtmpfs(
+    desc: &'static str,
+    node: &'static str,
+    f: fn(RunSystem) -> RunSystem,
+    cmd_should_fail: bool,
+) {
+    let r = RunSystem::new("/bin/ls").arg(node);
+    let r = if cmd_should_fail {
+        r.collect_on_fail()
+    } else {
+        r
+    };
+
+    let r = f(r)
+        .start()
+        .await
+        .expect("should be able to start /bin/ls")
+        .wait()
+        .await
+        .expect("should be able to get the status of the Run");
+    assert!(
+        r.is_failed() == cmd_should_fail,
+        "{} should{} exist with {}",
+        node,
+        if cmd_should_fail { " not" } else { "" },
+        desc,
+    );
+}
+
+#[async_std::test]
+#[ignore]
+#[cfg(feature = "systemd_236")]
+async fn test_root_mnt_bind_norecursive() {
+    let f = |x: RunSystem| x.mount("/", Mount::bind("/"));
+    test_devtmpfs("/ binded non-recursively", "/sys/fs", f, true).await;
+}
+
+#[async_std::test]
+#[ignore]
+#[cfg(feature = "systemd_236")]
+async fn test_root_mnt_apivfs() {
+    let f = |x: RunSystem| x.mount("/", Mount::bind("/")).mount_api_vfs();
+    test_devtmpfs("APIVFS mounted", "/sys/fs", f, false).await;
+}
+
+#[async_std::test]
+#[ignore]
+#[cfg(feature = "systemd_236")]
+async fn test_root_mnt_private_devices() {
+    let f = |x: RunSystem| x.mount("/", Mount::bind("/")).private_devices();
+    test_devtmpfs("private_devices in effect", "/dev/kmsg", f, true).await;
+    let f = |x: RunSystem| x.private_devices();
+    test_devtmpfs("private_devices in effect", "/dev/kmsg", f, true).await;
+    let f = |x: RunSystem| {
+        x.mount("/", Mount::bind("/"))
+            .mount_api_vfs()
+            .private_devices()
+    };
+    test_devtmpfs("private_devices in effect", "/dev/kmsg", f, true).await;
+}

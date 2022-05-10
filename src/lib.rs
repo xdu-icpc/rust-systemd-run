@@ -75,6 +75,9 @@ pub struct RunSystem {
     private_network: bool,
     private_ipc: bool,
     mount: Vec<(String, Mount)>,
+    mount_api_vfs: bool,
+    private_devices: bool,
+    no_new_privileges: bool,
 }
 
 /// Information of a transient service for running on the per-user service
@@ -273,6 +276,9 @@ impl RunSystem {
             private_network: false,
             private_ipc: false,
             mount: vec![],
+            mount_api_vfs: false,
+            private_devices: false,
+            no_new_privileges: false,
         }
     }
 
@@ -456,6 +462,67 @@ impl RunSystem {
         self
     }
 
+    /// Mount the API file systems `/proc`, `/sys`, `/dev`, and `/run`
+    /// for the private mount namespace of the transient service.
+    ///
+    /// Read `MountAPIVFS=` in [systemd.exec(5)](man:systemd.exec(5)) for
+    /// details.
+    ///
+    /// Implied by [Identity::dynamic].
+    ///
+    /// This setting is mostly useful with [RunSystem::mount] at `/`, but
+    /// you'll need to ensure the mount points for the API file systems
+    /// existing first if this setting is specified or implied.
+    ///
+    /// This setting is not available if the feature `systemd_233` is
+    /// disabled.  And, if the version of systemd is less than 248, `/run`
+    /// is not affected by this setting.  You may use [RunSystem::mount] to
+    /// control `/run` more precisely anyway.
+    #[cfg(feature = "systemd_233")]
+    pub fn mount_api_vfs(self) -> Self {
+        Self {
+            mount_api_vfs: true,
+            ..self
+        }
+    }
+
+    /// Sets up a new `/dev` mount for the executed processes and only adds
+    /// API pseudo devices such as `/dev/null` to it, but no physical
+    /// devices such as `/dev/sda`, system memory `/dev/mem`, system ports
+    /// `/dev/port` and others.
+    ///
+    /// Read `PrivateDevices=` in [systemd.exec(5)](man:systemd.exec(5)) for
+    /// details.
+    ///
+    /// This setting is not available if the feature `systemd_227` is
+    /// disabled.
+    #[cfg(feature = "systemd_227")]
+    pub fn private_devices(self) -> Self {
+        Self {
+            private_devices: true,
+            ..self
+        }
+    }
+
+    /// Ensures that the service process and all its children can never gain
+    /// new privileges through `execve()` (e.g. via setuid or setgid bits,
+    /// or filesystem capabilities).
+    ///
+    /// Read `NoNewPrivileges=` in [systemd.exec(5)](man:systemd.exec(5))
+    /// for details.
+    ///
+    /// Implied by [Identity::dynamic].
+    ///
+    /// This setting is not available if the feature `systemd_227` is
+    /// disabled.
+    #[cfg(feature = "systemd_227")]
+    pub fn no_new_privileges(self) -> Self {
+        Self {
+            no_new_privileges: true,
+            ..self
+        }
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
         let mut argv = vec![&self.path];
@@ -518,6 +585,9 @@ impl RunSystem {
         for (k, v) in [
             ("PrivateNetwork", self.private_network),
             ("PrivateIPC", self.private_ipc),
+            ("MountAPIVFS", self.mount_api_vfs),
+            ("PrivateDevices", self.private_devices),
+            ("NoNewPrivileges", self.no_new_privileges),
         ] {
             // Don't push false values as they may break on old Systemd.
             if v {

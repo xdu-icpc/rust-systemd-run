@@ -5,7 +5,8 @@ objdir = $(if $(OUT_DIR), $(OUT_DIR)/test-aux)
 objpfx = $(if $(OUT_DIR), $(objdir)/)
 
 targets = $(objpfx)memory $(objpfx)threads $(objpfx)shm $(objpfx)minimal \
-		  $(objpfx)floppy.img $(objpfx)rw $(objpfx)rust-systemd-run-test
+		  $(objpfx)floppy.img $(objpfx)rw $(objpfx)rust-systemd-run-test \
+		  $(objpfx)nosgid
 
 all: $(targets) $(if $(OUT_DIR),,.gitignore)
 
@@ -32,6 +33,10 @@ $(objpfx)minimal: minimal.c $(objdir)
 
 $(objpfx)rw: rw.c $(objdir)
 	$(CC) $(CFLAGS) $< -o $@
+
+$(objpfx)nosgid: nosgid.c $(objdir)
+	$(CC) $(CFLAGS) $< -o $@
+	chmod g+s $@
 
 # These are only for preventing some file owned by root from showing up in
 # the tree.
