@@ -1,0 +1,7 @@
+memory
+threads
+shm
+minimal
+floppy.img
+rw
+rust-systemd-run-test

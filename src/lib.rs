@@ -8,9 +8,11 @@ use zbus::Connection;
 
 mod error;
 mod identity;
+mod mount;
 mod sd;
 
 pub use error::{Error, Result};
+pub use mount::Mount;
 
 /// The identity for running a transient service on the system service
 /// manager.
@@ -72,6 +74,7 @@ pub struct RunSystem {
     cpu_quota: Option<u64>,
     private_network: bool,
     private_ipc: bool,
+    mount: Vec<(String, Mount)>,
 }
 
 /// Information of a transient service for running on the per-user service
@@ -269,6 +272,7 @@ impl RunSystem {
             cpu_quota: None,
             private_network: false,
             private_ipc: false,
+            mount: vec![],
         }
     }
 
@@ -441,6 +445,17 @@ impl RunSystem {
         self
     }
 
+    /// Set up a mount point for the transient service.  See [Mount] for
+    /// details.
+    ///
+    /// This setting is not available if the feature `systemd_233` is
+    /// disabled.
+    #[cfg(feature = "systemd_233")]
+    pub fn mount<T: AsRef<str>>(mut self, mount_point: T, mount: Mount) -> Self {
+        self.mount.push((mount_point.as_ref().to_owned(), mount));
+        self
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
         let mut argv = vec![&self.path];
@@ -508,6 +523,36 @@ impl RunSystem {
             if v {
                 properties.push((k, Value::from(true)))
             }
+        }
+
+        let mut p_bind = vec![];
+        let mut p_bind_ro = vec![];
+        let mut p_image = vec![];
+        let mut p_tmpfs = vec![];
+        for mnt in self.mount.into_iter().map(|(x, y)| mount::marshal(x, y)) {
+            use mount::MarshaledMount::*;
+            match mnt {
+                Bind(a, b, c, d) => p_bind.push((a, b, c, d)),
+                BindReadOnly(a, b, c, d) => p_bind_ro.push((a, b, c, d)),
+                Normal(a, b, c, d) => p_image.push((a, b, c, d)),
+                Tmpfs(a, b) => p_tmpfs.push((a, b)),
+            }
+        }
+
+        if !p_bind.is_empty() {
+            properties.push(("BindPaths", Value::from(p_bind)));
+        }
+
+        if !p_bind_ro.is_empty() {
+            properties.push(("BindReadOnlyPaths", Value::from(p_bind_ro)));
+        }
+
+        if !p_image.is_empty() {
+            properties.push(("MountImages", Value::from(p_image)));
+        }
+
+        if !p_tmpfs.is_empty() {
+            properties.push(("TemporaryFileSystem", Value::from(p_tmpfs)));
         }
 
         let properties = properties.iter().map(|(x, y)| (*x, y)).collect::<Vec<_>>();
