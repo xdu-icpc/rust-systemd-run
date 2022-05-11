@@ -36,3 +36,6 @@ systemd_231 = ["systemd_229"]
 systemd_229 = ["systemd_227"]
 systemd_227 = ["systemd_213"]
 systemd_213 = []
+
+[workspace]
+members = ["judge-client-3"]
