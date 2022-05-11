@@ -7,3 +7,5 @@ rw
 rust-systemd-run-test
 nosgid
 stdin.txt
+waste-fd
+waste-pid

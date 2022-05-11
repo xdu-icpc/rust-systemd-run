@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 use byte_unit::Byte;
+use std::num::NonZeroU64;
 use std::time::Duration;
 use zbus::fdo::{PropertiesChangedStream, PropertiesProxy};
 use zbus::zvariant::{ObjectPath, Value};
@@ -82,6 +83,10 @@ pub struct RunSystem {
     no_new_privileges: bool,
     limit_fsize: Option<Byte>,
     limit_fsize_soft: Option<Byte>,
+    limit_nofile: Option<u64>,
+    limit_nofile_soft: Option<u64>,
+    limit_nproc: Option<u64>,
+    limit_nproc_soft: Option<u64>,
     stdin: Option<InputSpec>,
     stdout: Option<OutputSpec>,
     stderr: Option<OutputSpec>,
@@ -89,9 +94,7 @@ pub struct RunSystem {
 
 /// Information of a transient service for running on the per-user service
 /// manager.
-pub struct RunUser {
-    inner: RunSystem,
-}
+pub struct RunUser(RunSystem);
 
 /// A transient service running.
 pub struct StartedRun<'a> {
@@ -169,19 +172,17 @@ async fn listen_unit_property_change<'a>(
 impl RunUser {
     /// Create a new [RunUser] from a path to executable.
     pub fn new<T: AsRef<str>>(path: T) -> Self {
-        Self {
-            inner: RunSystem {
+        Self(
+            RunSystem {
                 identity: identity::Identity::session(),
                 ..RunSystem::new(path)
             },
-        }
+        )
     }
 
     /// Append an argument to the command line.
     pub fn arg<T: AsRef<str>>(self, arg: T) -> Self {
-        Self {
-            inner: self.inner.arg(arg),
-        }
+        Self(self.0.arg(arg))
     }
 
     /// Set a custom name for the transient service.
@@ -189,9 +190,7 @@ impl RunUser {
     /// If the name is not terminated with `.service`, it will be appended
     /// automatically.
     pub fn service_name<T: AsRef<str>>(self, name: T) -> Self {
-        Self {
-            inner: self.inner.service_name(name),
-        }
+        Self(self.0.service_name(name))
     }
 
     /// Unload the transient service even if it fails.
@@ -202,9 +201,7 @@ impl RunUser {
     /// for details.
     #[cfg(feature = "systemd_236")]
     pub fn collect_on_fail(self) -> Self {
-        Self {
-            inner: self.inner.collect_on_fail(),
-        }
+        Self(self.0.collect_on_fail())
     }
 
     /// Configure a maximum time for the service to run.  If this is used
@@ -217,9 +214,7 @@ impl RunUser {
     /// Read `RuntimeMaxSec=` in
     /// [systemd.service(5)](man:systemd.service(5)) for details.
     pub fn runtime_max(self, d: Duration) -> Self {
-        Self {
-            inner: self.inner.runtime_max(d),
-        }
+        Self(self.0.runtime_max(d))
     }
 
     /// Specify the absolute limit on memory usage of the executed
@@ -236,9 +231,7 @@ impl RunUser {
     /// If the feature `systemd_231` is disabled, `MemoryLimit=` will be
     /// used instead if `MemoryMax=` for compatibility.
     pub fn memory_max(self, d: Byte) -> Self {
-        Self {
-            inner: self.inner.memory_max(d),
-        }
+        Self(self.0.memory_max(d))
     }
 
     /// Specify the absolute limit on swap usage of the executed
@@ -255,9 +248,7 @@ impl RunUser {
     /// for details.
     #[cfg(feature = "unified_cgroup")]
     pub fn memory_swap_max(self, d: Byte) -> Self {
-        Self {
-            inner: self.inner.memory_swap_max(d),
-        }
+        Self(self.0.memory_swap_max(d))
     }
 
     /// Set soft and hard limits of the maximum size in bytes of files that
@@ -266,19 +257,59 @@ impl RunUser {
     /// Read `LimitFSIZE=` in [systemd.exec(5)](man:systemd.exec(5)) and
     /// `RLIMIT_FSIZE` in [prlimit(2)](man:prlimit(2)) for details.
     ///
+    /// Any setting exceeding [u64::MAX] bytes will be trimmed to [u64::MAX]
+    /// bytes silently.  And, if `soft` is greater than `hard`, it will be
+    /// trimmed to `hard` silently.
+    ///
     /// Unlike [RunSystem::limit_fsize_soft_hard], this can't be used to
     /// increase the limits because insufficient privileges.
     pub fn limit_fsize_soft_hard(self, soft: Byte, hard: Byte) -> Self {
-        Self {
-            inner: self.inner.limit_fsize_soft_hard(soft, hard),
-        }
+        Self(self.0.limit_fsize_soft_hard(soft, hard))
     }
 
     /// Shorthand for `self.limit_fsize_soft_hard(lim, lim)`.
     pub fn limit_fsize(self, lim: Byte) -> Self {
-        Self {
-            inner: self.inner.limit_fsize(lim),
-        }
+        self.limit_fsize_soft_hard(lim, lim)
+    }
+
+    /// Set soft and hard limits of the number of threads for the real user
+    /// ID of the process.
+    ///
+    /// If `soft` is greater than `hard`, it will be trimmed to `hard`
+    /// silently.
+    ///
+    /// Read `LimitNPROC=` in [systemd.exec(5)](man:systemd.exec(5)) and
+    /// `RLIMIT_NPROC` in [prlimit(2)](man:prlimit(2)) for details.
+    ///
+    /// Unlike [RunSystem::limit_nproc_soft_hard], this can't be used to
+    /// increase the limits because insufficient privileges.
+    pub fn limit_nproc_soft_hard(self, soft: NonZeroU64, hard: NonZeroU64) -> Self {
+        Self(self.0.limit_nproc_soft_hard(soft, hard))
+    }
+
+    /// Shorthand for `self.limit_nproc_soft_hard(lim, lim)`.
+    pub fn limit_nproc(self, lim: NonZeroU64) -> Self {
+        self.limit_nproc_soft_hard(lim, lim)
+    }
+
+    /// Set soft and hard limits of the number of threads for the real user
+    /// ID of the process.
+    ///
+    /// If `soft` is greater than `hard`, it will be trimmed to `hard`
+    /// silently.
+    ///
+    /// Read `LimitNOFILE=` in [systemd.exec(5)](man:systemd.exec(5)) and
+    /// `RLIMIT_NOFILE` in [prlimit(2)](man:prlimit(2)) for details.
+    ///
+    /// Unlike [RunSystem::limit_nofile_soft_hard], this can't be used to
+    /// increase the limits because insufficient privileges.
+    pub fn limit_nofile_soft_hard(self, soft: NonZeroU64, hard: NonZeroU64) -> Self {
+        Self(self.0.limit_nofile_soft_hard(soft, hard))
+    }
+
+    /// Shorthand for `self.limit_nofile_soft_hard(lim, lim)`.
+    pub fn limit_nofile(self, lim: NonZeroU64) -> Self {
+        self.limit_nofile_soft_hard(lim, lim)
     }
 
     /// Controls where file descriptor 0 (STDIN) of the executed processes
@@ -287,9 +318,7 @@ impl RunUser {
     /// Read [InputSpec] and `StandardInput=` in
     /// [systemd.exec(5)](man:systemd.exec(5)) for details.
     pub fn stdin(self, spec: InputSpec) -> Self {
-        Self {
-            inner: self.inner.stdin(spec),
-        }
+        Self(self.0.stdin(spec))
     }
 
     /// Controls where file descriptor 1 (STDOUT) of the executed processes
@@ -298,9 +327,7 @@ impl RunUser {
     /// Read [OutputSpec] and `StandardOutput=` in
     /// [systemd.exec(5)](man:systemd.exec(5)) for details.
     pub fn stdout(self, spec: OutputSpec) -> Self {
-        Self {
-            inner: self.inner.stdout(spec),
-        }
+        Self(self.0.stdout(spec))
     }
 
     /// Controls where file descriptor 2 (STDERR) of the executed processes
@@ -309,14 +336,12 @@ impl RunUser {
     /// Read [OutputSpec] and `StandardError=` in
     /// [systemd.exec(5)](man:systemd.exec(5)) for details.
     pub fn stderr(self, spec: OutputSpec) -> Self {
-        Self {
-            inner: self.inner.stderr(spec),
-        }
+        Self(self.0.stderr(spec))
     }
 
     /// Start the transient service.
     pub async fn start<'a>(self) -> Result<StartedRun<'a>> {
-        self.inner.start().await
+        self.0.start().await
     }
 }
 
@@ -342,6 +367,10 @@ impl RunSystem {
             no_new_privileges: false,
             limit_fsize: None,
             limit_fsize_soft: None,
+            limit_nofile: None,
+            limit_nofile_soft: None,
+            limit_nproc: None,
+            limit_nproc_soft: None,
             stdin: None,
             stdout: None,
             stderr: None,
@@ -449,7 +478,7 @@ impl RunSystem {
     /// [systemd.resource-control(5)](man:systemd.resource-control(5)) for
     /// details.
     #[cfg(feature = "systemd_213")]
-    pub fn cpu_quota(mut self, percent: std::num::NonZeroU64) -> Self {
+    pub fn cpu_quota(mut self, percent: NonZeroU64) -> Self {
         self.cpu_quota = Some(percent.into());
         self
     }
@@ -592,6 +621,10 @@ impl RunSystem {
     /// Set soft and hard limits of the maximum size in bytes of files that
     /// the process may create.
     ///
+    /// Any setting exceeding [u64::MAX] bytes will be trimmed to [u64::MAX]
+    /// bytes silently.  And, if `soft` is greater than `hard`, it will be
+    /// trimmed to `hard` silently.
+    ///
     /// Read `LimitFSIZE=` in [systemd.exec(5)](man:systemd.exec(5)) and
     /// `RLIMIT_FSIZE` in [prlimit(2)](man:prlimit(2)) for details.
     pub fn limit_fsize_soft_hard(self, soft: Byte, hard: Byte) -> Self {
@@ -606,6 +639,50 @@ impl RunSystem {
     /// Shorthand for `self.limit_fsize_soft_hard(lim, lim)`.
     pub fn limit_fsize(self, lim: Byte) -> Self {
         self.limit_fsize_soft_hard(lim, lim)
+    }
+
+    /// Set soft and hard limits of the number of threads for the real user
+    /// ID of the process.
+    ///
+    /// If `soft` is greater than `hard`, it will be trimmed to `hard`
+    /// silently.
+    ///
+    /// Read `LimitNPROC=` in [systemd.exec(5)](man:systemd.exec(5)) and
+    /// `RLIMIT_NPROC` in [prlimit(2)](man:prlimit(2)) for details.
+    pub fn limit_nproc_soft_hard(self, soft: NonZeroU64, hard: NonZeroU64) -> Self {
+        let soft = std::cmp::min(soft, hard);
+        Self {
+            limit_nproc: Some(hard.into()),
+            limit_nproc_soft: Some(soft.into()),
+            ..self
+        }
+    }
+
+    /// Shorthand for `self.limit_nproc_soft_hard(lim, lim)`.
+    pub fn limit_nproc(self, lim: NonZeroU64) -> Self {
+        self.limit_nproc_soft_hard(lim, lim)
+    }
+
+    /// Set **the value one greater than** soft and hard limits of the
+    /// number of file descriptors opened by the process.
+    ///
+    /// If `soft` is greater than `hard`, it will be trimmed to `hard`
+    /// silently.
+    ///
+    /// Read `LimitNOFILE=` in [systemd.exec(5)](man:systemd.exec(5)) and
+    /// `RLIMIT_NOFILE` in [prlimit(2)](man:prlimit(2)) for details.
+    pub fn limit_nofile_soft_hard(self, soft: NonZeroU64, hard: NonZeroU64) -> Self {
+        let soft = std::cmp::min(soft, hard);
+        Self {
+            limit_nofile: Some(hard.into()),
+            limit_nofile_soft: Some(soft.into()),
+            ..self
+        }
+    }
+
+    /// Shorthand for `self.limit_nofile_soft_hard(lim, lim)`.
+    pub fn limit_nofile(self, lim: NonZeroU64) -> Self {
+        self.limit_nofile_soft_hard(lim, lim)
     }
 
     /// Controls where file descriptor 0 (STDIN) of the executed processes
@@ -680,6 +757,17 @@ impl RunSystem {
                 cpu_set[x] |= 1 << y;
             }
             properties.push(("AllowedCPUs", Value::from(cpu_set)));
+        }
+
+        for (k, v) in [
+            ("LimitNPROC", &self.limit_nproc),
+            ("LimitNPROCSoft", &self.limit_nproc_soft),
+            ("LimitNOFILE", &self.limit_nofile),
+            ("LimitNOFILESoft", &self.limit_nofile_soft),
+        ] {
+            if let Some(v) = v {
+                properties.push((k, Value::from(v)))
+            }
         }
 
         let memory_max_name = if cfg!(feature = "systemd_231") {

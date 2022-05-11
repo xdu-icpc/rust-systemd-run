@@ -1,12 +1,13 @@
-CFLAGS = -O2 -g -Wall -Wextra
-CXXFLAGS = -O2 -g -Wall -Wextra
+CFLAGS = -O2 -g -Wall -Wextra -std=gnu17
+CXXFLAGS = -O2 -g -Wall -Wextra -std=gnu++17
 
 objdir = $(if $(OUT_DIR), $(OUT_DIR)/test-aux)
 objpfx = $(if $(OUT_DIR), $(objdir)/)
 
 targets = $(objpfx)memory $(objpfx)threads $(objpfx)shm $(objpfx)minimal \
 		  $(objpfx)floppy.img $(objpfx)rw $(objpfx)rust-systemd-run-test \
-		  $(objpfx)nosgid $(objpfx)stdin.txt
+		  $(objpfx)nosgid $(objpfx)stdin.txt $(objpfx)waste-fd \
+		  $(objpfx)waste-pid
 
 all: $(targets) $(if $(OUT_DIR),,.gitignore)
 
@@ -37,6 +38,12 @@ $(objpfx)rw: rw.c $(objdir)
 $(objpfx)nosgid: nosgid.c $(objdir)
 	$(CC) $(CFLAGS) $< -o $@
 	chmod g+s $@
+
+$(objpfx)waste-fd: waste-fd.c $(objdir)
+	$(CC) $(CFLAGS) $< -o $@
+
+$(objpfx)waste-pid: waste-pid.cc $(objdir)
+	$(CXX) $(CXXFLAGS) $< -o $@
 
 $(objpfx)stdin.txt:
 	echo 1145141919810 > $@

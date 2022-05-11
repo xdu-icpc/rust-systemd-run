@@ -1,5 +1,5 @@
 use byte_unit::Byte;
-use systemd_run::RunUser;
+use systemd_run::{RunUser, RunSystem};
 
 #[async_std::test]
 #[cfg(feature = "systemd_236")]
@@ -16,7 +16,7 @@ async fn test_limit_fsize() {
         .collect_on_fail()
         .start()
         .await
-        .expect("should be able to start test dd")
+        .expect("should be able to start dd")
         .wait()
         .await
         .expect("should be able to get the status of the Run");
@@ -26,4 +26,42 @@ async fn test_limit_fsize() {
     use std::os::unix::fs::MetadataExt;
     let meta = f.metadata().expect("should be able to get the metadata");
     assert!(Byte::from_bytes(meta.size() as u128) <= lim);
+}
+
+#[async_std::test]
+#[cfg(feature = "systemd_236")]
+async fn test_limit_nofile() {
+    const E: &'static str = concat!(env!("OUT_DIR"), "/test-aux/waste-fd");
+    let r = RunUser::new(E)
+        .limit_nofile(16.try_into().unwrap())
+        .collect_on_fail()
+        .start()
+        .await
+        .expect("should be able to start test waste-fd")
+        .wait()
+        .await
+        .expect("should be able to get the status of the Run");
+    assert!(r.is_failed(), "fd shouldn't be wasted with no penalty");
+}
+
+#[async_std::test]
+#[ignore]
+#[cfg(feature = "systemd_236")]
+async fn test_root_limit_nproc() {
+    const E: &'static str = concat!(env!("OUT_DIR"), "/test-aux/waste-pid");
+    // Use dynamic() here so the test will be irrelevant to any other users,
+    // as RLIM_NPROC accounts all PIDs for a user.  Set runtime_max()
+    // because some implementations may dead lock when PID is exhausted.
+    let r = RunSystem::new(E)
+        .limit_nproc(16.try_into().unwrap())
+        .identity(systemd_run::Identity::dynamic())
+        .runtime_max(std::time::Duration::from_secs(1))
+        .collect_on_fail()
+        .start()
+        .await
+        .expect("should be able to start test waste-pid")
+        .wait()
+        .await
+        .expect("should be able to get the status of the Run");
+    assert!(r.is_failed(), "pid shouldn't be wasted with no penalty");
 }
