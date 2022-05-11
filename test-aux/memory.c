@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "barrier.h"
+
 int main()
 {
 	char *x = malloc(256 << 20);
@@ -12,6 +14,6 @@ int main()
 	memset(x, 1, 256 << 20);
 
 	/* Prevent optimization. */
-	__asm__ volatile ("":::"memory");
+	barrier();
 	return 0;
 }

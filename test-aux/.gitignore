@@ -9,3 +9,4 @@ nosgid
 stdin.txt
 waste-fd
 waste-pid
+use-stack

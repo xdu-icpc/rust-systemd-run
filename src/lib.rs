@@ -39,6 +39,8 @@ pub struct RunSystem {
     no_new_privileges: bool,
     limit_fsize: Option<Byte>,
     limit_fsize_soft: Option<Byte>,
+    limit_stack: Option<Byte>,
+    limit_stack_soft: Option<Byte>,
     limit_nofile: Option<u64>,
     limit_nofile_soft: Option<u64>,
     limit_nproc: Option<u64>,
@@ -222,7 +224,7 @@ impl RunUser {
     /// trimmed to `hard` silently.
     ///
     /// Unlike [RunSystem::limit_fsize_soft_hard], this can't be used to
-    /// increase the limits because insufficient privileges.
+    /// increase the hard limit because of insufficient privileges.
     pub fn limit_fsize_soft_hard(self, soft: Byte, hard: Byte) -> Self {
         Self(self.0.limit_fsize_soft_hard(soft, hard))
     }
@@ -242,7 +244,7 @@ impl RunUser {
     /// `RLIMIT_NPROC` in [prlimit(2)](man:prlimit(2)) for details.
     ///
     /// Unlike [RunSystem::limit_nproc_soft_hard], this can't be used to
-    /// increase the limits because insufficient privileges.
+    /// increase the hard limit because of insufficient privileges.
     pub fn limit_nproc_soft_hard(self, soft: NonZeroU64, hard: NonZeroU64) -> Self {
         Self(self.0.limit_nproc_soft_hard(soft, hard))
     }
@@ -262,7 +264,7 @@ impl RunUser {
     /// `RLIMIT_NOFILE` in [prlimit(2)](man:prlimit(2)) for details.
     ///
     /// Unlike [RunSystem::limit_nofile_soft_hard], this can't be used to
-    /// increase the limits because insufficient privileges.
+    /// increase the hard limit because of insufficient privileges.
     pub fn limit_nofile_soft_hard(self, soft: NonZeroU64, hard: NonZeroU64) -> Self {
         Self(self.0.limit_nofile_soft_hard(soft, hard))
     }
@@ -270,6 +272,25 @@ impl RunUser {
     /// Shorthand for `self.limit_nofile_soft_hard(lim, lim)`.
     pub fn limit_nofile(self, lim: NonZeroU64) -> Self {
         self.limit_nofile_soft_hard(lim, lim)
+    }
+
+    /// Set the soft and hard limit on the size of the process stack.
+    ///
+    /// If `soft` is greater than `hard`, it will be trimmed to `hard`
+    /// silently.
+    ///
+    /// Read `LimitSTACK=` in [systemd.exec(5)](man:systemd.exec(5)) and
+    /// `RLIMIT_STACK` in [prlimit(2)](man:prlimit(2)) for details.
+    ///
+    /// Unlike [RunSystem::limit_stack_soft_hard], this can't be used to
+    /// increase the hard limit because of insufficient privileges.
+    pub fn limit_stack_soft_hard(self, soft: Byte, hard: Byte) -> Self {
+        Self(self.0.limit_stack_soft_hard(soft, hard))
+    }
+
+    /// Shorthand for `self.limit_stack_soft_hard(lim, lim)`.
+    pub fn limit_stack(self, lim: Byte) -> Self {
+        self.limit_stack_soft_hard(lim, lim)
     }
 
     /// Controls where file descriptor 0 (STDIN) of the executed processes
@@ -333,6 +354,8 @@ impl RunSystem {
             no_new_privileges: false,
             limit_fsize: None,
             limit_fsize_soft: None,
+            limit_stack: None,
+            limit_stack_soft: None,
             limit_nofile: None,
             limit_nofile_soft: None,
             limit_nproc: None,
@@ -658,6 +681,27 @@ impl RunSystem {
         self.limit_nofile_soft_hard(lim, lim)
     }
 
+    /// Set the soft and hard limit on the size of the process stack.
+    ///
+    /// If `soft` is greater than `hard`, it will be trimmed to `hard`
+    /// silently.
+    ///
+    /// Read `LimitSTACK=` in [systemd.exec(5)](man:systemd.exec(5)) and
+    /// `RLIMIT_STACK` in [prlimit(2)](man:prlimit(2)) for details.
+    pub fn limit_stack_soft_hard(self, soft: Byte, hard: Byte) -> Self {
+        let soft = std::cmp::min(soft, hard);
+        Self {
+            limit_stack: Some(hard),
+            limit_stack_soft: Some(soft),
+            ..self
+        }
+    }
+
+    /// Shorthand for `self.limit_stack_soft_hard(lim, lim)`.
+    pub fn limit_stack(self, lim: Byte) -> Self {
+        self.limit_stack_soft_hard(lim, lim)
+    }
+
     /// Controls where file descriptor 0 (STDIN) of the executed processes
     /// is connected to.
     ///
@@ -760,6 +804,8 @@ impl RunSystem {
             ("MemorySwapMax", &self.memory_swap_max),
             ("LimitFSIZE", &self.limit_fsize),
             ("LimitFSIZESoft", &self.limit_fsize_soft),
+            ("LimitSTACK", &self.limit_stack),
+            ("LimitSTACKSoft", &self.limit_stack_soft),
         ] {
             if let Some(v) = v {
                 let b = u64::try_from(v.get_bytes()).unwrap_or(u64::MAX);

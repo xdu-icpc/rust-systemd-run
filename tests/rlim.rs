@@ -45,6 +45,23 @@ async fn test_limit_nofile() {
 }
 
 #[async_std::test]
+async fn test_limit_stack() {
+    // Normally the default stack limit is 8192KiB:INF, so hopefully this
+    // will work...
+    const E: &'static str = concat!(env!("OUT_DIR"), "/test-aux/use-stack");
+    let lim = Byte::from_str("256 MiB").unwrap();
+    let r = RunUser::new(E)
+        .limit_stack(lim)
+        .start()
+        .await
+        .expect("should be able to start test use-stack")
+        .wait()
+        .await
+        .expect("should be able to get the status of the Run");
+    assert!(!r.is_failed(), "stack can be wasted in this test");
+}
+
+#[async_std::test]
 #[ignore]
 #[cfg(feature = "systemd_236")]
 async fn test_root_limit_nproc() {
