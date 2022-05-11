@@ -172,12 +172,10 @@ async fn listen_unit_property_change<'a>(
 impl RunUser {
     /// Create a new [RunUser] from a path to executable.
     pub fn new<T: AsRef<str>>(path: T) -> Self {
-        Self(
-            RunSystem {
-                identity: identity::Identity::session(),
-                ..RunSystem::new(path)
-            },
-        )
+        Self(RunSystem {
+            identity: identity::Identity::session(),
+            ..RunSystem::new(path)
+        })
     }
 
     /// Append an argument to the command line.

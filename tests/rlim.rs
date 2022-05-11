@@ -1,5 +1,5 @@
 use byte_unit::Byte;
-use systemd_run::{RunUser, RunSystem};
+use systemd_run::{RunSystem, RunUser};
 
 #[async_std::test]
 #[cfg(feature = "systemd_236")]
