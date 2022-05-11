@@ -48,6 +48,7 @@ pub struct RunSystem {
     stdin: Option<InputSpec>,
     stdout: Option<OutputSpec>,
     stderr: Option<OutputSpec>,
+    current_dir: Option<String>,
 }
 
 /// Information of a transient service for running on the per-user service
@@ -326,6 +327,18 @@ impl RunUser {
         Self(self.0.stderr(spec))
     }
 
+    /// Sets the working directory for executed processes.
+    ///
+    /// Read `WorkingDirectory=` in
+    /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    ///
+    /// This setting is unavailable with the feature `systemd_227`
+    /// disabled.
+    #[cfg(feature = "systemd_227")]
+    pub fn current_dir<P: AsRef<str>>(self, path: P) -> Self {
+        Self(self.0.current_dir(path))
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(self) -> Result<StartedRun<'a>> {
         self.0.start().await
@@ -363,6 +376,7 @@ impl RunSystem {
             stdin: None,
             stdout: None,
             stderr: None,
+            current_dir: None,
         }
     }
 
@@ -744,6 +758,21 @@ impl RunSystem {
         }
     }
 
+    /// Sets the working directory for executed processes.
+    ///
+    /// Read `WorkingDirectory=` in
+    /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    ///
+    /// This setting is unavailable with the feature `systemd_227`
+    /// disabled.
+    #[cfg(feature = "systemd_227")]
+    pub fn current_dir<P: AsRef<str>>(self, path: P) -> Self {
+        Self {
+            current_dir: Some(path.as_ref().to_owned()),
+            ..self
+        }
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
         let mut argv = vec![&self.path];
@@ -760,6 +789,10 @@ impl RunSystem {
         if self.collect_on_fail {
             let prop = ("CollectMode", Value::from("inactive-or-failed"));
             properties.push(prop);
+        }
+
+        if let Some(d) = self.current_dir {
+            properties.push(("WorkingDirectory", Value::from(d)));
         }
 
         let identity_prop = identity::unit_properties(&self.identity);
