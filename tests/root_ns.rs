@@ -25,6 +25,9 @@ async fn test_root_private_network_wget() {
     let r = RunSystem::new("/usr/bin/wget")
         .collect_on_fail()
         .arg("https://example.org/")
+        .arg("-O")
+        .arg("/dev/null")
+        .private_network()
         .identity(Identity::dynamic())
         .start()
         .await
