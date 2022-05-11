@@ -9,6 +9,7 @@ async fn test_all_null() {
         .stdin(InputSpec::null())
         .stdout(OutputSpec::null())
         .stderr(OutputSpec::null())
+        .collect_on_fail()
         .start()
         .await
         .expect("should be able to start test program rw")
