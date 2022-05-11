@@ -43,7 +43,7 @@ $(objpfx)waste-fd: waste-fd.c $(objdir)
 	$(CC) $(CFLAGS) $< -o $@
 
 $(objpfx)waste-pid: waste-pid.cc $(objdir)
-	$(CXX) $(CXXFLAGS) $< -o $@
+	$(CXX) $(CXXFLAGS) $< -o $@ -pthread
 
 $(objpfx)stdin.txt:
 	echo 1145141919810 > $@
