@@ -6,7 +6,7 @@ objpfx = $(if $(OUT_DIR), $(objdir)/)
 
 targets = $(objpfx)memory $(objpfx)threads $(objpfx)shm $(objpfx)minimal \
 		  $(objpfx)floppy.img $(objpfx)rw $(objpfx)rust-systemd-run-test \
-		  $(objpfx)nosgid
+		  $(objpfx)nosgid $(objpfx)stdin.txt
 
 all: $(targets) $(if $(OUT_DIR),,.gitignore)
 
@@ -37,6 +37,9 @@ $(objpfx)rw: rw.c $(objdir)
 $(objpfx)nosgid: nosgid.c $(objdir)
 	$(CC) $(CFLAGS) $< -o $@
 	chmod g+s $@
+
+$(objpfx)stdin.txt:
+	echo 1145141919810 > $@
 
 # These are only for preventing some file owned by root from showing up in
 # the tree.

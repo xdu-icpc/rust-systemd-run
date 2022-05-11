@@ -8,19 +8,26 @@ int main(int argc, char **argv)
 	FILE *f;
 	int w = 0;
 
-	if (argc != 3) {
-		fprintf(stderr, "usage: %s {r|w} {filename}\n", argv[0]);
+	if (argc != 3 && argc != 2) {
+		fprintf(stderr, "usage: %s {r|w} [filename]\n", argv[0]);
 		return 1;
 	}
 
 	if (strcmp(argv[1], "w") == 0)
 		w = 1;
 	else if (strcmp(argv[1], "r") != 0) {
-		fprintf(stderr, "usage: %s {r|w} {filename}\n", argv[0]);
+		fprintf(stderr, "usage: %s {r|w} [filename]\n", argv[0]);
 		return 1;
 	}
 
-	f = fopen(argv[2], argv[1]);
+	if (argc == 2)
+		if (w)
+			f = stdout;
+		else
+			f = stdin;
+	else
+		f = fopen(argv[2], argv[1]);
+
 	if (!f) {
 		perror("fopen");
 		return 2;

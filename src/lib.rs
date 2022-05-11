@@ -8,10 +8,12 @@ use zbus::Connection;
 
 mod error;
 mod identity;
+mod ioredirect;
 mod mount;
 mod sd;
 
 pub use error::{Error, Result};
+pub use ioredirect::{InputSpec, OutputSpec};
 pub use mount::Mount;
 
 /// The identity for running a transient service on the system service
@@ -78,6 +80,11 @@ pub struct RunSystem {
     mount_api_vfs: bool,
     private_devices: bool,
     no_new_privileges: bool,
+    limit_fsize: Option<Byte>,
+    limit_fsize_soft: Option<Byte>,
+    stdin: Option<InputSpec>,
+    stdout: Option<OutputSpec>,
+    stderr: Option<OutputSpec>,
 }
 
 /// Information of a transient service for running on the per-user service
@@ -253,6 +260,60 @@ impl RunUser {
         }
     }
 
+    /// Set soft and hard limits of the maximum size in bytes of files that
+    /// the process may create.
+    ///
+    /// Read `LimitFSIZE=` in [systemd.exec(5)](man:systemd.exec(5)) and
+    /// `RLIMIT_FSIZE` in [prlimit(2)](man:prlimit(2)) for details.
+    ///
+    /// Unlike [RunSystem::limit_fsize_soft_hard], this can't be used to
+    /// increase the limits because insufficient privileges.
+    pub fn limit_fsize_soft_hard(self, soft: Byte, hard: Byte) -> Self {
+        Self {
+            inner: self.inner.limit_fsize_soft_hard(soft, hard),
+        }
+    }
+
+    /// Shorthand for `self.limit_fsize_soft_hard(lim, lim)`.
+    pub fn limit_fsize(self, lim: Byte) -> Self {
+        Self {
+            inner: self.inner.limit_fsize(lim),
+        }
+    }
+
+    /// Controls where file descriptor 0 (STDIN) of the executed processes
+    /// is connected to.
+    ///
+    /// Read [InputSpec] and `StandardInput=` in
+    /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    pub fn stdin(self, spec: InputSpec) -> Self {
+        Self {
+            inner: self.inner.stdin(spec),
+        }
+    }
+
+    /// Controls where file descriptor 1 (STDOUT) of the executed processes
+    /// is connected to.
+    ///
+    /// Read [OutputSpec] and `StandardOutput=` in
+    /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    pub fn stdout(self, spec: OutputSpec) -> Self {
+        Self {
+            inner: self.inner.stdout(spec),
+        }
+    }
+
+    /// Controls where file descriptor 2 (STDERR) of the executed processes
+    /// is connected to.
+    ///
+    /// Read [OutputSpec] and `StandardError=` in
+    /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    pub fn stderr(self, spec: OutputSpec) -> Self {
+        Self {
+            inner: self.inner.stderr(spec),
+        }
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(self) -> Result<StartedRun<'a>> {
         self.inner.start().await
@@ -279,6 +340,11 @@ impl RunSystem {
             mount_api_vfs: false,
             private_devices: false,
             no_new_privileges: false,
+            limit_fsize: None,
+            limit_fsize_soft: None,
+            stdin: None,
+            stdout: None,
+            stderr: None,
         }
     }
 
@@ -523,6 +589,61 @@ impl RunSystem {
         }
     }
 
+    /// Set soft and hard limits of the maximum size in bytes of files that
+    /// the process may create.
+    ///
+    /// Read `LimitFSIZE=` in [systemd.exec(5)](man:systemd.exec(5)) and
+    /// `RLIMIT_FSIZE` in [prlimit(2)](man:prlimit(2)) for details.
+    pub fn limit_fsize_soft_hard(self, soft: Byte, hard: Byte) -> Self {
+        let soft = std::cmp::min(soft, hard);
+        Self {
+            limit_fsize: Some(hard),
+            limit_fsize_soft: Some(soft),
+            ..self
+        }
+    }
+
+    /// Shorthand for `self.limit_fsize_soft_hard(lim, lim)`.
+    pub fn limit_fsize(self, lim: Byte) -> Self {
+        self.limit_fsize_soft_hard(lim, lim)
+    }
+
+    /// Controls where file descriptor 0 (STDIN) of the executed processes
+    /// is connected to.
+    ///
+    /// Read [InputSpec] and `StandardInput=` in
+    /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    pub fn stdin(self, spec: InputSpec) -> Self {
+        Self {
+            stdin: Some(spec),
+            ..self
+        }
+    }
+
+    /// Controls where file descriptor 1 (STDOUT) of the executed processes
+    /// is connected to.
+    ///
+    /// Read [OutputSpec] and `StandardOutput=` in
+    /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    pub fn stdout(self, spec: OutputSpec) -> Self {
+        Self {
+            stdout: Some(spec),
+            ..self
+        }
+    }
+
+    /// Controls where file descriptor 2 (STDERR) of the executed processes
+    /// is connected to.
+    ///
+    /// Read [OutputSpec] and `StandardError=` in
+    /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    pub fn stderr(self, spec: OutputSpec) -> Self {
+        Self {
+            stderr: Some(spec),
+            ..self
+        }
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
         let mut argv = vec![&self.path];
@@ -570,6 +691,8 @@ impl RunSystem {
         for (k, v) in [
             (memory_max_name, &self.memory_max),
             ("MemorySwapMax", &self.memory_swap_max),
+            ("LimitFSIZE", &self.limit_fsize),
+            ("LimitFSIZESoft", &self.limit_fsize_soft),
         ] {
             if let Some(v) = v {
                 let b = u64::try_from(v.get_bytes()).unwrap_or(u64::MAX);
@@ -623,6 +746,27 @@ impl RunSystem {
 
         if !p_tmpfs.is_empty() {
             properties.push(("TemporaryFileSystem", Value::from(p_tmpfs)));
+        }
+
+        let mut io_prop = vec![];
+
+        for (pfx, (sfx, val)) in [
+            ("StandardInput", self.stdin.map(ioredirect::marshal_input)),
+            (
+                "StandardOutput",
+                self.stdout.map(ioredirect::marshal_output),
+            ),
+            ("StandardError", self.stderr.map(ioredirect::marshal_output)),
+        ]
+        .into_iter()
+        .filter_map(|(a, b)| Some(a).zip(b))
+        {
+            let key = pfx.to_owned() + sfx;
+            io_prop.push((key, val))
+        }
+
+        for (k, v) in io_prop.iter() {
+            properties.push((k, Value::from(v)))
         }
 
         let properties = properties.iter().map(|(x, y)| (*x, y)).collect::<Vec<_>>();
