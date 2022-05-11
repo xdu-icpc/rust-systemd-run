@@ -45,12 +45,14 @@ async fn test_limit_nofile() {
 }
 
 #[async_std::test]
-async fn test_limit_stack() {
-    // Normally the default stack limit is 8192KiB:INF, so hopefully this
-    // will work...
+#[ignore]
+async fn test_root_limit_stack() {
+    // Unfortunately, in some environments (notably, GitHub runners) the
+    // hard limit of stack is set to a finite value (likely same as the soft
+    // limit).  So we have to run this as root to ensure it working.
     const E: &'static str = concat!(env!("OUT_DIR"), "/test-aux/use-stack");
     let lim = Byte::from_str("256 MiB").unwrap();
-    let r = RunUser::new(E)
+    let r = RunSystem::new(E)
         .limit_stack(lim)
         .start()
         .await
