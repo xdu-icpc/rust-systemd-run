@@ -167,6 +167,10 @@ impl RunUser {
     ///
     /// Read `RuntimeMaxSec=` in
     /// [systemd.service(5)](man:systemd.service(5)) for details.
+    ///
+    /// This setting will be unavailable with the feature `systemd_229`
+    /// disabled.
+    #[cfg(feature = "systemd_229")]
     pub fn runtime_max(self, d: Duration) -> Self {
         Self(self.0.runtime_max(d))
     }
@@ -193,6 +197,7 @@ impl RunUser {
     ///
     /// This setting is supported only if the unified control group is used,
     /// so it's not available if the feature `unified_cgroup` is disabled.
+    /// And it will be unavailable with `systemd_232` disabled.
     ///
     /// A [Byte] exceeding [u64::MAX] bytes is trimmed to [u64::MAX] bytes
     /// silently.
@@ -201,6 +206,7 @@ impl RunUser {
     /// [systemd.resource-control(5)](man:systemd.resource-control(5))
     /// for details.
     #[cfg(feature = "unified_cgroup")]
+    #[cfg(feature = "systemd_232")]
     pub fn memory_swap_max(self, d: Byte) -> Self {
         Self(self.0.memory_swap_max(d))
     }
@@ -378,6 +384,10 @@ impl RunSystem {
     ///
     /// Read `RuntimeMaxSec=` in
     /// [systemd.service(5)](man:systemd.service(5)) for details.
+    ///
+    /// This setting will be unavailable with the feature `systemd_229`
+    /// disabled.
+    #[cfg(feature = "systemd_229")]
     pub fn runtime_max(mut self, d: Duration) -> Self {
         self.runtime_max = Some(d);
         self
@@ -406,6 +416,8 @@ impl RunSystem {
     ///
     /// This setting is supported only if the unified control group is used,
     /// so it's not available if the feature `unified_cgroup` is disabled.
+    /// And, if `systemd_232` is disabled, this setting will also be
+    /// unavailable.
     ///
     /// A [Byte] exceeding [u64::MAX] bytes is trimmed to [u64::MAX] bytes
     /// silently.
@@ -414,6 +426,7 @@ impl RunSystem {
     /// [systemd.resource-control(5)](man:systemd.resource-control(5))
     /// for details.
     #[cfg(feature = "unified_cgroup")]
+    #[cfg(feature = "systemd_232")]
     pub fn memory_swap_max(mut self, d: Byte) -> Self {
         self.memory_swap_max = Some(d);
         self
@@ -494,7 +507,7 @@ impl RunSystem {
     /// This setting is not available if the feature `systemd_249` is
     /// disabled.  And, it will be ignored silently if `CONFIG_IPC_NS` is
     /// not enabled in the configuration of the running kernel.
-    #[cfg(feature = "systemd_249")]
+    #[cfg(feature = "systemd_248")]
     pub fn private_ipc(mut self) -> Self {
         self.private_ipc = true;
         self
