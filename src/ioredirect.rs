@@ -35,6 +35,9 @@ impl InputSpec {
     }
 
     /// Specify the a path where the file is connected to the input.
+    ///
+    /// This setting will be unavailable if the feature `systemd_236` is
+    /// disabled.
     #[cfg(feature = "systemd_236")]
     pub fn file<T: AsRef<str>>(path: T) -> Self {
         Self(Priv::File(path.as_ref().to_owned()))
@@ -70,6 +73,9 @@ impl OutputSpec {
 
     /// Specify a path where the file will be overwritten from offset 0.
     /// If the file does not exist, it will be created.
+    ///
+    /// This setting will be unavailable if the feature `systemd_236` is
+    /// disabled.
     #[cfg(feature = "systemd_236")]
     pub fn file<T: AsRef<str>>(path: T) -> Self {
         Self(Priv::File(path.as_ref().to_owned()))
@@ -77,6 +83,9 @@ impl OutputSpec {
 
     /// Like [OutputSpec::file], but the file will be truncated before
     /// written.
+    ///
+    /// This setting will be unavailable if the feature `systemd_248` is
+    /// disabled.
     #[cfg(feature = "systemd_248")]
     pub fn truncate<T: AsRef<str>>(path: T) -> Self {
         Self(Priv::Truncate(path.as_ref().to_owned()))
@@ -84,6 +93,9 @@ impl OutputSpec {
 
     /// Like [OutputSpec::file], but the file will be written from its end,
     /// instead of offset 0.
+    ///
+    /// This setting will be unavailable if the feature `systemd_240` is
+    /// disabled.
     #[cfg(feature = "systemd_240")]
     pub fn append<T: AsRef<str>>(path: T) -> Self {
         Self(Priv::Append(path.as_ref().to_owned()))
