@@ -277,6 +277,8 @@ impl RunUser {
     ///
     /// Read [InputSpec] and `StandardInput=` in
     /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    ///
+    /// The default is [InputSpec::null()].
     pub fn stdin(self, spec: InputSpec) -> Self {
         Self(self.0.stdin(spec))
     }
@@ -286,6 +288,8 @@ impl RunUser {
     ///
     /// Read [OutputSpec] and `StandardOutput=` in
     /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    ///
+    /// The default depends on system configuration.
     pub fn stdout(self, spec: OutputSpec) -> Self {
         Self(self.0.stdout(spec))
     }
@@ -295,6 +299,8 @@ impl RunUser {
     ///
     /// Read [OutputSpec] and `StandardError=` in
     /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    ///
+    /// The default depends on system configuration.
     pub fn stderr(self, spec: OutputSpec) -> Self {
         Self(self.0.stderr(spec))
     }
@@ -657,6 +663,8 @@ impl RunSystem {
     ///
     /// Read [InputSpec] and `StandardInput=` in
     /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    ///
+    /// The default is [InputSpec::null()].
     pub fn stdin(self, spec: InputSpec) -> Self {
         Self {
             stdin: Some(spec),
@@ -669,6 +677,8 @@ impl RunSystem {
     ///
     /// Read [OutputSpec] and `StandardOutput=` in
     /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    ///
+    /// The default depends on system configuration.
     pub fn stdout(self, spec: OutputSpec) -> Self {
         Self {
             stdout: Some(spec),
@@ -681,6 +691,8 @@ impl RunSystem {
     ///
     /// Read [OutputSpec] and `StandardError=` in
     /// [systemd.exec(5)](man:systemd.exec(5)) for details.
+    ///
+    /// The default depends on system configuration.
     pub fn stderr(self, spec: OutputSpec) -> Self {
         Self {
             stderr: Some(spec),
