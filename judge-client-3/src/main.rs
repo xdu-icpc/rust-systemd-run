@@ -284,7 +284,7 @@ async fn judge<T: data::DataSource, P: AsRef<Path>, Q: AsRef<Path>>(
     run_dir: P,
     tmp_dir: Q,
     old_verdict: &mut Option<Verdict>,
-    tot_time: &mut Duration,
+    max_time: &mut Duration,
 ) -> Result<Verdict> {
     use util::ensure_utf8_path as u8p;
     let d = oj_data.fetch(&cli.solution_id).await?;
@@ -349,7 +349,7 @@ async fn judge<T: data::DataSource, P: AsRef<Path>, Q: AsRef<Path>>(
     let cmp_iospec = [None, err.as_ref(), None];
 
     let mut cnt = 0;
-    *tot_time = Duration::new(0, 0);
+    *max_time = Duration::new(0, 0);
     for (tin, tout) in &d.testcases {
         cnt += 1;
         let test_name = tin
@@ -371,13 +371,13 @@ async fn judge<T: data::DataSource, P: AsRef<Path>, Q: AsRef<Path>>(
             output: Byte::from_bytes(out_lim + byte_unit::MEBIBYTE),
         };
         let x = run(cli, etc, &lim, cmd, "/", tmp_ro, run_iospec).await?;
-        *tot_time += x.wall_time_usage();
+        *max_time = std::cmp::max(*max_time, x.wall_time_usage());
         info!(
-            "{} seconds used for previous {} tests",
-            tot_time.as_secs_f64(),
+            "{} seconds used for test {}",
+            max_time.as_secs_f64(),
             cnt,
         );
-        if *tot_time > d.time_limit {
+        if *max_time > d.time_limit {
             return Ok(Verdict::TimeLimit);
         }
 
@@ -421,7 +421,7 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
     tmp_dir = tmp_dir + &uuid::Uuid::new_v4().to_simple().to_string();
     let tmp_dir = run_dir.join(tmp_dir);
     let mut old_verdict = None;
-    let mut tot_time = Duration::new(0, 0);
+    let mut max_time = Duration::new(0, 0);
 
     let r = judge(
         cli,
@@ -430,7 +430,7 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
         &run_dir,
         &tmp_dir,
         &mut old_verdict,
-        &mut tot_time,
+        &mut max_time,
     )
     .await;
 
@@ -453,7 +453,7 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
         return Ok(());
     }
 
-    oj_data.feedback(&cli.solution_id, r, tot_time).await?;
+    oj_data.feedback(&cli.solution_id, r, max_time).await?;
 
     use std::io::Read;
 
