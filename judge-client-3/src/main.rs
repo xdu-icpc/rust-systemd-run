@@ -538,7 +538,7 @@ async fn main() {
     let etc = etc.unwrap();
 
     // recreate our working directory under oj_base
-    let run_dir = oj_base.join(format!("run{}", runner_id));
+    let run_dir = PathBuf::from(format!("run{}", runner_id));
     create_dir_all(&run_dir).unwrap();
 
     // Initialize logging.
