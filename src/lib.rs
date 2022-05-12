@@ -528,8 +528,8 @@ impl RunSystem {
     /// disabled.
     #[cfg(feature = "systemd_244")]
     #[cfg(feature = "unified_cgroup")]
-    pub fn allowed_cpus(mut self, cpus: &[usize]) -> Self {
-        self.allowed_cpus = cpus.to_owned();
+    pub fn allowed_cpus<'a, I: IntoIterator<Item = &'a usize>>(mut self, cpus: I) -> Self {
+        self.allowed_cpus = cpus.into_iter().copied().collect();
         self
     }
 

@@ -160,6 +160,11 @@ async fn run<P1: AsRef<Path>, P2: AsRef<Path>>(
     (tmp, tmp_rw): (P2, bool),
     stdfd: [Option<&PathBuf>; 3],
 ) -> Result<systemd_run::FinishedRun> {
+    let mem_lim_str = lim.memory.get_bytes().to_string();
+    for x in &mut cmd {
+        *x = x.replace("%m", &mem_lim_str);
+    }
+
     use util::ensure_utf8_path as u8p;
     let stdin = stdfd[0].map_or_else(
         || Ok(systemd_run::InputSpec::null()),
@@ -177,6 +182,12 @@ async fn run<P1: AsRef<Path>, P2: AsRef<Path>>(
     if tmp_rw {
         tmp = tmp.writable();
     }
+
+    let cpu = cli.runner_id.parse::<usize>();
+    if cpu.is_err() {
+        warn!("unrecognized runner_id, allowed_cpu not used");
+    }
+
     systemd_run::RunSystem::new(&cmd[0])
         .service_name("opoj-runner-".to_owned() + &cli.runner_id)
         .args(&cmd[1..])
@@ -186,7 +197,7 @@ async fn run<P1: AsRef<Path>, P2: AsRef<Path>>(
         .memory_max(lim.memory)
         .memory_swap_max(Byte::from_bytes(0))
         .cpu_quota(NonZeroU64::new(100).unwrap())
-        .allowed_cpus(&[]) // TODO XXX placeholder
+        .allowed_cpus(cpu.as_ref())
         .private_network()
         .private_ipc()
         .mount("/", systemd_run::Mount::bind(u8p(&root)?))
@@ -354,8 +365,7 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
     let tmp_dir = run_dir.join(tmp_dir);
     let mut old_verdict = None;
 
-    let r = judge(cli, etc, oj_data, &run_dir, &tmp_dir, &mut old_verdict)
-        .await;
+    let r = judge(cli, etc, oj_data, &run_dir, &tmp_dir, &mut old_verdict).await;
 
     if std::fs::remove_dir_all(&tmp_dir).is_err() {
         error!("failed to remove directory {}", tmp_dir.display());
@@ -366,8 +376,8 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
             if v != u {
                 warn!("verdict changed from {:?} to {:?}", u, v);
             }
-        },
-        _ => {},
+        }
+        _ => {}
     }
     if let Err(ref e) = r {
         error!("judgement failed: {}", e);
