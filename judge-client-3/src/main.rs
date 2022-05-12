@@ -604,8 +604,16 @@ async fn main() {
                 error!("connection URL is not set");
                 exit(1);
             }
-            use sqlx::Connection;
-            let conn = sqlx::MySqlConnection::connect(&etc.hust.db_url).await;
+            use sqlx::ConnectOptions;
+            use std::str::FromStr;
+            let conn = sqlx::mysql::MySqlConnectOptions::from_str(&etc.hust.db_url);
+            if conn.is_err() {
+                error!("bad URL {}", &etc.hust.db_url);
+                exit(1);
+            }
+            let conn = conn.unwrap()
+                .log_statements(log::LevelFilter::Trace)
+                .connect().await;
             if conn.is_err() {
                 error!("can not connect to {}", &etc.hust.db_url);
                 exit(1);
