@@ -1,3 +1,20 @@
+# This also serves as an example for configuring judge-client-3.
+
+# Comment this line to use unlimited stack.
+stack_limit = "1 GiB"
+# nproc_limit = 32
+# nofile_limit = 32
+
+[compiler_limit]
+time = 10
+# memory = "1 GiB"
+# output = "32 MiB"
+
+# [compare_limit]
+# time = 15
+# memory = "1 GiB"
+# output = "32 MiB"
+
 [config]
 log_level = "Debug"
 stderr = true

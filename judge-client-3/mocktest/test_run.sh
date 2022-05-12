@@ -4,7 +4,7 @@ cargo build
 
 mkdir -p output
 
-for i in {1..7}; do
+for i in {1..8}; do
 	sudo ../../target/debug/judge-client-3 test$i 0 .
 done
 

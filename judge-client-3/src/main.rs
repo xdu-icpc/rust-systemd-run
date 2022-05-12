@@ -35,13 +35,29 @@ enum DataSource {
     Mock,
 }
 
+fn fifteen_sec() -> Duration {
+    Duration::from_secs(15)
+}
+
+fn one_gib() -> Byte {
+    Byte::from_str("1 GiB").unwrap()
+}
+
+fn thirty_two_mib() -> Byte {
+    Byte::from_str("32 MiB").unwrap()
+}
+
 #[serde_with::serde_as]
 #[derive(Debug, Deserialize)]
 struct RunLimit {
+    #[serde_as(as = "serde_with::DurationSeconds<f64>")]
+    #[serde(default = "fifteen_sec")]
     time: Duration,
     #[serde_as(as = "serde_with::DisplayFromStr")]
+    #[serde(default = "one_gib")]
     memory: Byte,
     #[serde_as(as = "serde_with::DisplayFromStr")]
+    #[serde(default = "thirty_two_mib")]
     output: Byte,
 }
 
@@ -397,6 +413,10 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
     }
     let r = r.unwrap_or(Verdict::JudgementFailed);
     info!("verdict = {:?}", r);
+
+    if cli.cfg.dry.or(etc.config.dry) == Some(true) {
+        return Ok(());
+    }
 
     oj_data.feedback(&cli.solution_id, r)?;
 
