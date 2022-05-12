@@ -375,11 +375,7 @@ async fn judge<T: data::DataSource, P: AsRef<Path>, Q: AsRef<Path>>(
         };
         let x = run(cli, etc, &lim, cmd, "/", tmp_ro, run_iospec).await?;
         *max_time = std::cmp::max(*max_time, x.wall_time_usage());
-        info!(
-            "{} seconds used for test {}",
-            max_time.as_secs_f64(),
-            cnt,
-        );
+        info!("{} seconds used for test {}", max_time.as_secs_f64(), cnt,);
         if *max_time > d.time_limit {
             return Ok(Verdict::TimeLimit);
         }
@@ -622,9 +618,11 @@ async fn main() {
                 error!("bad URL {}", &etc.hust.db_url);
                 exit(1);
             }
-            let conn = conn.unwrap()
+            let conn = conn
+                .unwrap()
                 .log_statements(log::LevelFilter::Trace)
-                .connect().await;
+                .connect()
+                .await;
             if conn.is_err() {
                 error!("can not connect to {}", &etc.hust.db_url);
                 exit(1);

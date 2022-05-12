@@ -86,6 +86,7 @@ impl DataSource for HustOJDataSource {
             8 | 10 => Some(Verdict::RunError),
             9 => Some(Verdict::OutputLimit),
             11 => Some(Verdict::CompilerError),
+            15 => Some(Verdict::NoOutput),
             _ => None,
         };
 
@@ -111,19 +112,63 @@ impl DataSource for HustOJDataSource {
     }
     async fn feedback<T: AsRef<str> + Send>(
         &mut self,
-        _id: T,
-        _v: Verdict,
-        _d: Duration,
+        id: T,
+        v: Verdict,
+        d: Duration,
     ) -> Result<()> {
-        error!("HustOJDataSource::feedback not implemented yet");
+        let id: i32 = id
+            .as_ref()
+            .parse()
+            .map_err(|_| Error::BadSolutionID(id.as_ref().to_owned()))?;
+        let result: i16 = match v {
+            Verdict::Correct => 4,
+            Verdict::CompilerError => 11,
+            Verdict::TimeLimit => 7,
+            Verdict::RunError => 10,
+            Verdict::NoOutput => 15,
+            Verdict::OutputLimit => 9,
+            Verdict::WrongAnswer => 6,
+            Verdict::JudgementFailed => 16,
+        };
+        sqlx::query!(
+            "UPDATE solution SET result = ?, time = ? WHERE solution_id = ?",
+            result,
+            d.as_millis() as i32,
+            id
+        )
+        .execute(&mut self.conn)
+        .await
+        .map_err(Error::SQLError)?;
         Ok(())
     }
-    async fn feedback_ce<T: AsRef<str> + Send>(&mut self, _id: T, _msg: Vec<u8>) -> Result<()> {
-        error!("HustOJDataSource::feedback_ce not implemented yet");
+    async fn feedback_ce<T: AsRef<str> + Send>(&mut self, id: T, msg: Vec<u8>) -> Result<()> {
+        let id: i32 = id
+            .as_ref()
+            .parse()
+            .map_err(|_| Error::BadSolutionID(id.as_ref().to_owned()))?;
+        sqlx::query!(
+            "UPDATE compileinfo SET error = ? WHERE solution_id = ?",
+            String::from_utf8(msg).map_err(Error::NonUtf8Msg)?,
+            id
+        )
+        .execute(&mut self.conn)
+        .await
+        .map_err(Error::SQLError)?;
         Ok(())
     }
-    async fn feedback_log<T: AsRef<str> + Send>(&mut self, _id: T, _msg: Vec<u8>) -> Result<()> {
-        error!("HustOJDataSource::feedback_log not implemented yet");
+    async fn feedback_log<T: AsRef<str> + Send>(&mut self, id: T, msg: Vec<u8>) -> Result<()> {
+        let id: i32 = id
+            .as_ref()
+            .parse()
+            .map_err(|_| Error::BadSolutionID(id.as_ref().to_owned()))?;
+        sqlx::query!(
+            "UPDATE runtimeinfo SET error = ? WHERE solution_id = ?",
+            String::from_utf8(msg).map_err(Error::NonUtf8Msg)?,
+            id
+        )
+        .execute(&mut self.conn)
+        .await
+        .map_err(Error::SQLError)?;
         Ok(())
     }
 }

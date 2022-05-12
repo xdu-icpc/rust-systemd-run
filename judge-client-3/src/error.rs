@@ -10,6 +10,7 @@ pub enum Error {
     BadSolutionID(String),
     SQLError(sqlx::Error),
     BadProblem(i32),
+    NonUtf8Msg(std::string::FromUtf8Error),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -46,6 +47,9 @@ impl std::fmt::Display for Error {
             }
             Self::BadProblem(p) => {
                 write!(f, "bad configuration for problem {}", p)
+            }
+            Self::NonUtf8Msg(_) => {
+                write!(f, "message is not UTF-8")
             }
         }
     }
