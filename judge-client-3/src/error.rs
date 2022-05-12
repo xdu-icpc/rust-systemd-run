@@ -7,6 +7,9 @@ pub enum Error {
     BadPathEncoding(std::path::PathBuf),
     SystemdError(systemd_run::Error),
     UnconfiguredLanguage(String),
+    BadSolutionID(String),
+    SQLError(sqlx::Error),
+    BadProblem(i32),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -34,6 +37,15 @@ impl std::fmt::Display for Error {
             }
             Self::UnconfiguredLanguage(l) => {
                 write!(f, "unconfigured language {}", &l)
+            }
+            Self::BadSolutionID(s) => {
+                write!(f, "bad solution ID {}", &s)
+            }
+            Self::SQLError(e) => {
+                write!(f, "sql error: {}", e)
+            }
+            Self::BadProblem(p) => {
+                write!(f, "bad configuration for problem {}", p)
             }
         }
     }

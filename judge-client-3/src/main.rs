@@ -1,5 +1,5 @@
 pub mod data;
-// mod data_hustoj;
+mod data_hustoj;
 mod data_mock;
 mod error;
 pub mod util;
@@ -155,6 +155,27 @@ fn thirty_two() -> NonZeroU64 {
     NonZeroU64::try_from(32).unwrap()
 }
 
+fn home_judge() -> PathBuf {
+    "/home/judge".into()
+}
+
+#[derive(Debug, Deserialize)]
+struct Hust {
+    #[serde(default)]
+    db_url: String,
+    #[serde(default = "home_judge")]
+    oj_home: PathBuf,
+}
+
+impl Default for Hust {
+    fn default() -> Self {
+        Self {
+            db_url: String::new(),
+            oj_home: home_judge(),
+        }
+    }
+}
+
 #[serde_with::serde_as]
 #[derive(Debug, Deserialize)]
 struct ConfigFile {
@@ -175,6 +196,8 @@ struct ConfigFile {
     nproc_limit: NonZeroU64,
     #[serde(default = "thirty_two")]
     nofile_limit: NonZeroU64,
+    #[serde(default)]
+    hust: Hust,
 }
 
 impl ConfigFile {
@@ -577,8 +600,19 @@ async fn main() {
             exit(1)
         }
         Some(DataSource::HustOJ) => {
-            error!("not implemented");
-            exit(1)
+            if etc.hust.db_url.is_empty() {
+                error!("connection URL is not set");
+                exit(1);
+            }
+            use sqlx::Connection;
+            let conn = sqlx::MySqlConnection::connect(&etc.hust.db_url).await;
+            if conn.is_err() {
+                error!("can not connect to {}", &etc.hust.db_url);
+                exit(1);
+            }
+
+            let mut oj_data = data_hustoj::HustOJDataSource::new(conn.unwrap(), &etc.hust.oj_home);
+            judge_feedback(&cli, &etc, &mut oj_data, &run_dir).await
         }
         Some(DataSource::Mock) => {
             let mut oj_data = data_mock::MockDataSource::new();
