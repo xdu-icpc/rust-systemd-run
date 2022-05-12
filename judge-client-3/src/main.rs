@@ -130,6 +130,11 @@ fn diff_zu() -> Vec<String> {
     vec!["/usr/bin/diff".to_string(), "-Zu".to_string()]
 }
 
+fn stack_inf() -> Byte {
+    Byte::from(u64::MAX)
+}
+
+#[serde_with::serde_as]
 #[derive(Debug, Deserialize)]
 struct ConfigFile {
     #[serde(default)]
@@ -142,6 +147,9 @@ struct ConfigFile {
     compare_limit: RunLimit,
     #[serde(default = "diff_zu")]
     default_cmp: Vec<String>,
+    #[serde_as(as = "serde_with::DisplayFromStr")]
+    #[serde(default = "stack_inf")]
+    stack_limit: Byte,
 }
 
 impl ConfigFile {
@@ -208,7 +216,7 @@ async fn run<P1: AsRef<Path>, P2: AsRef<Path>>(
         .limit_fsize(lim.output)
         .limit_nproc(NonZeroU64::new(32).unwrap()) // TODO should be
         .limit_nofile(NonZeroU64::new(32).unwrap()) // XXX configurable
-        .limit_stack(Byte::from_str("8 MiB").unwrap()) // FIXME
+        .limit_stack(etc.stack_limit)
         .stdin(stdin)
         .stdout(stdout)
         .stderr(stderr)
