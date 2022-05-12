@@ -122,6 +122,9 @@ struct Flags {
     /// Log level.
     #[clap(long)]
     log_level: Option<LogLevel>,
+    /// Runtime dir.
+    #[clap(long)]
+    run_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Parser)]
@@ -590,6 +593,14 @@ async fn main() {
         )
         .unwrap();
     log4rs::init_config(config).unwrap();
+
+    let wd = cli.cfg.run_dir.as_ref().or(etc.config.run_dir.as_ref());
+    if let Some(d) = wd {
+        if std::env::set_current_dir(d).is_err() {
+            error!("cannot change to {}", d.display());
+            exit(1);
+        }
+    }
 
     // Real judging logic goes here.
     let ds = cli.cfg.data_source.or(etc.config.data_source);
