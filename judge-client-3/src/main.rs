@@ -379,13 +379,10 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
         error!("failed to remove directory {}", tmp_dir.display());
     }
 
-    match (&r, &old_verdict) {
-        (Ok(v), Some(u)) => {
-            if v != u {
-                warn!("verdict changed from {:?} to {:?}", u, v);
-            }
+    if let (Ok(v), Some(u)) = (&r, &old_verdict) {
+        if v != u {
+            warn!("verdict changed from {:?} to {:?}", u, v);
         }
-        _ => {}
     }
     if let Err(ref e) = r {
         error!("judgement failed: {}", e);
@@ -411,9 +408,9 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
     } else {
         x.resize(n, 0);
     }
-    for i in 0..x.len() {
-        if !x[i].is_ascii() {
-            x[i] = b'?';
+    for c in &mut x {
+        if !c.is_ascii() {
+            *c = b'?';
         }
     }
     oj_data.feedback_ce(&cli.solution_id, x)?;
@@ -447,9 +444,9 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
     } else {
         x.resize(n, 0);
     }
-    for i in 0..x.len() {
-        if !x[i].is_ascii() {
-            x[i] = b'?';
+    for c in &mut x {
+        if !c.is_ascii() {
+            *c = b'?';
         }
     }
     oj_data.feedback_log(&cli.solution_id, x)?;
