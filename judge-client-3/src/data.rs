@@ -32,9 +32,15 @@ pub struct Data {
     pub old_result: Option<Verdict>,
 }
 
+#[async_trait::async_trait]
 pub trait DataSource {
-    fn fetch<T: AsRef<str>>(&mut self, id: T) -> Result<Data>;
-    fn feedback<T: AsRef<str>>(&mut self, id: T, v: Verdict) -> Result<()>;
-    fn feedback_ce<T: AsRef<str>>(&mut self, id: T, msg: Vec<u8>) -> Result<()>;
-    fn feedback_log<T: AsRef<str>>(&mut self, id: T, msg: Vec<u8>) -> Result<()>;
+    async fn fetch<T: AsRef<str> + Send>(&mut self, id: T) -> Result<Data>;
+    async fn feedback<T: AsRef<str> + Send>(
+        &mut self,
+        id: T,
+        v: Verdict,
+        d: Duration,
+    ) -> Result<()>;
+    async fn feedback_ce<T: AsRef<str> + Send>(&mut self, id: T, msg: Vec<u8>) -> Result<()>;
+    async fn feedback_log<T: AsRef<str> + Send>(&mut self, id: T, msg: Vec<u8>) -> Result<()>;
 }

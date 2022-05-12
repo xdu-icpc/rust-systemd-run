@@ -44,19 +44,25 @@ impl MockDataSource {
     }
 }
 
+#[async_trait::async_trait]
 impl DataSource for MockDataSource {
-    fn fetch<T: AsRef<str>>(&mut self, id: T) -> Result<Data> {
+    async fn fetch<T: AsRef<str> + Send>(&mut self, id: T) -> Result<Data> {
         let f = id.as_ref().to_owned() + ".toml";
         DataFile::load(f)?.into_data()
     }
-    fn feedback<T: AsRef<str>>(&mut self, _id: T, _v: Verdict) -> Result<()> {
+    async fn feedback<T: AsRef<str> + Send>(
+        &mut self,
+        _id: T,
+        _v: Verdict,
+        _d: Duration,
+    ) -> Result<()> {
         Ok(())
     }
-    fn feedback_ce<T: AsRef<str>>(&mut self, id: T, msg: Vec<u8>) -> Result<()> {
+    async fn feedback_ce<T: AsRef<str> + Send>(&mut self, id: T, msg: Vec<u8>) -> Result<()> {
         let name = "output/".to_owned() + id.as_ref() + ".compile.txt";
         std::fs::write(name, &msg).map_err(Error::IOError)
     }
-    fn feedback_log<T: AsRef<str>>(&mut self, id: T, msg: Vec<u8>) -> Result<()> {
+    async fn feedback_log<T: AsRef<str> + Send>(&mut self, id: T, msg: Vec<u8>) -> Result<()> {
         let name = "output/".to_owned() + id.as_ref() + ".judgelog.txt";
         std::fs::write(name, &msg).map_err(Error::IOError)
     }

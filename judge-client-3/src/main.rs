@@ -1,4 +1,5 @@
 pub mod data;
+// mod data_hustoj;
 mod data_mock;
 mod error;
 pub mod util;
@@ -260,9 +261,10 @@ async fn judge<T: data::DataSource, P: AsRef<Path>, Q: AsRef<Path>>(
     run_dir: P,
     tmp_dir: Q,
     old_verdict: &mut Option<Verdict>,
+    tot_time: &mut Duration,
 ) -> Result<Verdict> {
     use util::ensure_utf8_path as u8p;
-    let d = oj_data.fetch(&cli.solution_id)?;
+    let d = oj_data.fetch(&cli.solution_id).await?;
     *old_verdict = d.old_result;
 
     let lang_cfg = etc.language.get(&d.language);
@@ -324,7 +326,7 @@ async fn judge<T: data::DataSource, P: AsRef<Path>, Q: AsRef<Path>>(
     let cmp_iospec = [None, err.as_ref(), None];
 
     let mut cnt = 0;
-    let mut tot_time = Duration::new(0, 0);
+    *tot_time = Duration::new(0, 0);
     for (tin, tout) in &d.testcases {
         cnt += 1;
         let test_name = tin
@@ -346,13 +348,13 @@ async fn judge<T: data::DataSource, P: AsRef<Path>, Q: AsRef<Path>>(
             output: Byte::from_bytes(out_lim + byte_unit::MEBIBYTE),
         };
         let x = run(cli, etc, &lim, cmd, "/", tmp_ro, run_iospec).await?;
-        tot_time += x.wall_time_usage();
+        *tot_time += x.wall_time_usage();
         info!(
             "{} seconds used for previous {} tests",
             tot_time.as_secs_f64(),
             cnt,
         );
-        if tot_time > d.time_limit {
+        if *tot_time > d.time_limit {
             return Ok(Verdict::TimeLimit);
         }
 
@@ -396,8 +398,18 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
     tmp_dir = tmp_dir + &uuid::Uuid::new_v4().to_simple().to_string();
     let tmp_dir = run_dir.join(tmp_dir);
     let mut old_verdict = None;
+    let mut tot_time = Duration::new(0, 0);
 
-    let r = judge(cli, etc, oj_data, &run_dir, &tmp_dir, &mut old_verdict).await;
+    let r = judge(
+        cli,
+        etc,
+        oj_data,
+        &run_dir,
+        &tmp_dir,
+        &mut old_verdict,
+        &mut tot_time,
+    )
+    .await;
 
     if std::fs::remove_dir_all(&tmp_dir).is_err() {
         error!("failed to remove directory {}", tmp_dir.display());
@@ -418,7 +430,7 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
         return Ok(());
     }
 
-    oj_data.feedback(&cli.solution_id, r)?;
+    oj_data.feedback(&cli.solution_id, r, tot_time).await?;
 
     use std::io::Read;
 
@@ -441,7 +453,7 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
             *c = b'?';
         }
     }
-    oj_data.feedback_ce(&cli.solution_id, x)?;
+    oj_data.feedback_ce(&cli.solution_id, x).await?;
 
     // Judge log and maybe compare output
     let mut x = vec![0u8; 32800];
@@ -477,7 +489,7 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
             *c = b'?';
         }
     }
-    oj_data.feedback_log(&cli.solution_id, x)?;
+    oj_data.feedback_log(&cli.solution_id, x).await?;
 
     Ok(())
 }
