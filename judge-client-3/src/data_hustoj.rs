@@ -42,7 +42,9 @@ impl DataSource for HustOJDataSource {
                     problem.memory_limit, \
                     problem.spj \
              FROM solution, source_code, problem \
-             WHERE source_code.solution_id = ?",
+             WHERE source_code.solution_id = ? \
+               AND source_code.solution_id = solution.solution_id \
+               AND solution.problem_id = problem.problem_id",
             id
         )
         .fetch_one(&mut self.conn)
