@@ -6,12 +6,13 @@ pub struct HustOJDataSource {
     oj_home: PathBuf,
 }
 
+#[derive(Debug)]
 struct QueryLine {
     source: String,
     problem_id: i32,
     time_limit: i32,
     memory_limit: i32,
-    spj: bool,
+    spj: u8,
     result: i16,
     language: u32,
 }
@@ -91,9 +92,11 @@ impl DataSource for HustOJDataSource {
         let data_dir = self.oj_home.join("data").join(p.to_string());
         let testcases = util::enumerate_testcase(&data_dir)?;
 
+        // Stupid enough, HUSTOJ uses CHAR(1) for SPJ, instead of a rational
+        // BOOLEAN or TINYINT(1).
         let spj = match line.spj {
-            false => None,
-            true => Some(data_dir.join("spj")),
+            b'1' => Some(data_dir.join("spj")),
+            _ => None,
         };
 
         Ok(Data {
