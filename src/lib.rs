@@ -142,6 +142,11 @@ impl RunUser {
         Self(self.0.arg(arg))
     }
 
+    /// Append multiple arguments to the command line.
+    pub fn args<T: AsRef<str>, I: IntoIterator<Item = T>>(self, args: I) -> Self {
+        Self(self.0.args(args))
+    }
+
     /// Set a custom name for the transient service.
     ///
     /// If the name is not terminated with `.service`, it will be appended
@@ -383,6 +388,13 @@ impl RunSystem {
     /// Append an argument to the command line.
     pub fn arg<T: AsRef<str>>(mut self, arg: T) -> Self {
         self.args.push(arg.as_ref().to_string());
+        self
+    }
+
+    /// Append multiple arguments to the command line.
+    pub fn args<T: AsRef<str>, I: IntoIterator<Item = T>>(mut self, args: I) -> Self {
+        self.args
+            .extend(args.into_iter().map(|x| x.as_ref().to_owned()));
         self
     }
 

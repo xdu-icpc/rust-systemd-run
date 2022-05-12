@@ -1,0 +1,6 @@
+language = "c"
+time_limit = 0.5
+memory_limit = "256 MiB"
+testcase_dir = "problem/aplusb"
+src = "code/aplusb/re.c"
+expect = "RunError"

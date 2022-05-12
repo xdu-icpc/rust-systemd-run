@@ -1,0 +1,13 @@
+[config]
+log_level = "Debug"
+stderr = true
+data_source = "Mock"
+
+# Example for language configuration.
+# It can be assumed that the compile and run commands are executed with
+# "/tmp" (in the chroot sandbox) as the current directory.  The path to
+# executables in both commands must be absolute.
+[language.c]
+src_name = "main.c"
+cmd_compile = ["/usr/bin/gcc", "main.c", "-o", "main"]
+cmd_run = ["/tmp/main"]
