@@ -134,6 +134,10 @@ fn stack_inf() -> Byte {
     Byte::from(u64::MAX)
 }
 
+fn thirty_two() -> NonZeroU64 {
+    NonZeroU64::try_from(32).unwrap()
+}
+
 #[serde_with::serde_as]
 #[derive(Debug, Deserialize)]
 struct ConfigFile {
@@ -150,6 +154,10 @@ struct ConfigFile {
     #[serde_as(as = "serde_with::DisplayFromStr")]
     #[serde(default = "stack_inf")]
     stack_limit: Byte,
+    #[serde(default = "thirty_two")]
+    nproc_limit: NonZeroU64,
+    #[serde(default = "thirty_two")]
+    nofile_limit: NonZeroU64,
 }
 
 impl ConfigFile {
@@ -214,8 +222,8 @@ async fn run<P1: AsRef<Path>, P2: AsRef<Path>>(
         .private_devices()
         .no_new_privileges()
         .limit_fsize(lim.output)
-        .limit_nproc(NonZeroU64::new(32).unwrap()) // TODO should be
-        .limit_nofile(NonZeroU64::new(32).unwrap()) // XXX configurable
+        .limit_nproc(etc.nproc_limit)
+        .limit_nofile(etc.nofile_limit)
         .limit_stack(etc.stack_limit)
         .stdin(stdin)
         .stdout(stdout)
