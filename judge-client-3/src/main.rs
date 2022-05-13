@@ -547,7 +547,16 @@ async fn main() {
 
     let etc = etc.unwrap();
 
-    // recreate our working directory under oj_base
+    // Change to working directory.
+    let wd = cli.cfg.run_dir.as_ref().or(etc.config.run_dir.as_ref());
+    if let Some(d) = wd {
+        create_dir_all(&d).unwrap();
+        if std::env::set_current_dir(d).is_err() {
+            panic!("cannot change to {}", d.display());
+        }
+    }
+
+    // recreate our working directory under working directory
     let run_dir = PathBuf::from(format!("run{}", runner_id));
     create_dir_all(&run_dir).unwrap();
 
@@ -600,14 +609,6 @@ async fn main() {
         )
         .unwrap();
     log4rs::init_config(config).unwrap();
-
-    let wd = cli.cfg.run_dir.as_ref().or(etc.config.run_dir.as_ref());
-    if let Some(d) = wd {
-        if std::env::set_current_dir(d).is_err() {
-            error!("cannot change to {}", d.display());
-            exit(1);
-        }
-    }
 
     // Real judging logic goes here.
     let ds = cli.cfg.data_source.or(etc.config.data_source);
