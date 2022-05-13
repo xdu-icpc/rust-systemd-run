@@ -18,6 +18,24 @@ pub use identity::Identity;
 pub use ioredirect::{InputSpec, OutputSpec};
 pub use mount::Mount;
 
+/// Controls the `hidepid=` mount option of the `procfs` instance in the
+/// private namespace of the unit.
+///
+/// Read `ProtectProc=` in [systemd.exec(5)](man:systemd.exec(5)) for
+/// details.
+#[cfg(feature = "systemd_247")]
+pub enum ProtectProc {
+    /// Take away the ability to access most of other users' process
+    /// metadata
+    NoAccess,
+    /// Processes owned by other users are hidden
+    Invisible,
+    /// Processes not traceable by the unit are hidden
+    Ptraceable,
+    /// No protection
+    Default,
+}
+
 /// Information of a transient service for running on the system service
 /// manager.
 pub struct RunSystem {
@@ -49,6 +67,7 @@ pub struct RunSystem {
     stdout: Option<OutputSpec>,
     stderr: Option<OutputSpec>,
     current_dir: Option<String>,
+    protect_proc: ProtectProc,
 }
 
 /// Information of a transient service for running on the per-user service
@@ -382,6 +401,7 @@ impl RunSystem {
             stdout: None,
             stderr: None,
             current_dir: None,
+            protect_proc: ProtectProc::Default,
         }
     }
 
@@ -785,6 +805,18 @@ impl RunSystem {
         }
     }
 
+    /// Read [ProtectProc] for details.
+    ///
+    /// This setting will be unavailable if the feature `systemd_247` is
+    /// disabled.
+    #[cfg(feature = "systemd_247")]
+    pub fn protect_proc(self, x: ProtectProc) -> Self {
+        Self {
+            protect_proc: x,
+            ..self
+        }
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
         let mut argv = vec![&self.path];
@@ -805,6 +837,17 @@ impl RunSystem {
 
         if let Some(d) = self.current_dir {
             properties.push(("WorkingDirectory", Value::from(d)));
+        }
+
+        let proc = match self.protect_proc {
+            ProtectProc::NoAccess => Some("noaccess"),
+            ProtectProc::Invisible => Some("invisible"),
+            ProtectProc::Ptraceable => Some("ptraceable"),
+            ProtectProc::Default => None,
+        };
+
+        if let Some(v) = proc {
+            properties.push(("ProtectProc", Value::from(v)));
         }
 
         let identity_prop = identity::unit_properties(&self.identity);

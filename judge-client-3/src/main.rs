@@ -266,6 +266,7 @@ async fn run<P1: AsRef<Path>, P2: AsRef<Path>>(
         .mount("/tmp", tmp)
         .mount_api_vfs()
         .private_devices()
+        .protect_proc(systemd_run::ProtectProc::Invisible)
         .no_new_privileges()
         .limit_fsize(lim.output)
         .limit_nproc(etc.nproc_limit)
