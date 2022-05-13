@@ -1,0 +1,6 @@
+language = "c++"
+time_limit = 1
+memory_limit = "256 MiB"
+testcase_dir = "problem/aplusb"
+src = "../../test-aux/waste-pid.cc"
+expect = "RunError"
