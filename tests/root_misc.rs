@@ -24,7 +24,7 @@ async fn test_root_protect_proc() {
     let r = RunSystem::new("/bin/test")
         .args(&["-e", "/proc/1"])
         .identity(Identity::dynamic())
-        .protect_proc(systemd_run::ProtectProc::Invisible)
+        .protect_proc(systemd_run::ProtectProc::invisible())
         .start()
         .await
         .expect("should be able to start /bin/test")
