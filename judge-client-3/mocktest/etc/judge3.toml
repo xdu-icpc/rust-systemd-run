@@ -19,6 +19,7 @@ time = 10
 log_level = "Debug"
 stderr = true
 data_source = "Mock"
+# chroot_dir = "/"
 
 # Example for language configuration.
 # It can be assumed that the compile and run commands are executed with

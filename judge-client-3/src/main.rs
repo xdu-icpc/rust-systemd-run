@@ -125,6 +125,9 @@ struct Flags {
     /// Runtime dir.
     #[clap(long)]
     run_dir: Option<PathBuf>,
+    /// Chroot dir.
+    #[clap(long)]
+    chroot_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Parser)]
@@ -316,6 +319,12 @@ async fn judge<T: data::DataSource, P: AsRef<Path>, Q: AsRef<Path>>(
         src.write_all(&d.source).map_err(Error::IOError)?;
     }
 
+    let root = cli.cfg.chroot_dir.as_ref()
+        .or(etc.config.chroot_dir.as_ref())
+        .map(u8p)
+        .transpose()?
+        .unwrap_or("/");
+
     info!("compiling the source code");
     let cmd = lang_cfg.cmd_compile.clone();
     let lim = &etc.compiler_limit;
@@ -323,7 +332,7 @@ async fn judge<T: data::DataSource, P: AsRef<Path>, Q: AsRef<Path>>(
     let compile_iospec = [None, None, err.as_ref()];
     let tmp_rw = (&tmp_dir, true);
     let tmp_ro = (&tmp_dir, false);
-    let x = run(cli, etc, lim, cmd, "/", tmp_rw, compile_iospec).await?;
+    let x = run(cli, etc, lim, cmd, root, tmp_rw, compile_iospec).await?;
     if x.is_failed() {
         info!("compilation failed");
         return Ok(Verdict::CompilerError);
@@ -373,7 +382,7 @@ async fn judge<T: data::DataSource, P: AsRef<Path>, Q: AsRef<Path>>(
             memory: d.memory_limit,
             output: Byte::from_bytes(out_lim + byte_unit::MEBIBYTE),
         };
-        let x = run(cli, etc, &lim, cmd, "/", tmp_ro, run_iospec).await?;
+        let x = run(cli, etc, &lim, cmd, root, tmp_ro, run_iospec).await?;
         *max_time = std::cmp::max(*max_time, x.wall_time_usage());
         info!("{} seconds used for test {}", max_time.as_secs_f64(), cnt,);
         if *max_time > d.time_limit {
