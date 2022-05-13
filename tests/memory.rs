@@ -39,4 +39,44 @@ mod memory_tests_need_unified_cgroup {
             "allocating 256 MB should fail with MemoryMax=128MB"
         );
     }
+
+    #[async_std::test]
+    #[cfg(feature = "systemd_236")]
+    async fn test_slice_memory_limit_exceed() {
+        // Create a slice with "unique" name.  I generated it locally with
+        // uuidgen.
+        const SLICE: &'static str = "7772d908_2631_4b34_aba0_20454e89cf9a.slice";
+        let path = std::path::PathBuf::from(env!("XDG_RUNTIME_DIR")).join("systemd/user");
+
+        std::fs::create_dir_all(&path).unwrap();
+
+        let path = path.join(SLICE);
+        std::fs::write(&path, b"[Slice]\nMemoryMax=128M\nMemorySwapMax=0\n").unwrap();
+
+        let r = RunUser::new(PATH)
+            .slice(SLICE)
+            .collect_on_fail()
+            .start()
+            .await
+            .unwrap()
+            .wait()
+            .await
+            .unwrap();
+        assert!(
+            r.is_failed(),
+            "allocating 256 MB should fail with MemoryMax=128MB"
+        );
+
+        // clean up
+        RunUser::new("/usr/bin/systemctl")
+            .args(&["--user", "stop", SLICE])
+            .collect_on_fail()
+            .start()
+            .await
+            .unwrap()
+            .wait()
+            .await
+            .unwrap();
+        std::fs::remove_file(&path).unwrap();
+    }
 }

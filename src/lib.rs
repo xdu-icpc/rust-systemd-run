@@ -88,6 +88,7 @@ pub struct RunSystem {
     stderr: Option<OutputSpec>,
     current_dir: Option<String>,
     protect_proc: ProtectProcInternal,
+    slice: Option<String>,
 }
 
 /// Information of a transient service for running on the per-user service
@@ -383,6 +384,15 @@ impl RunUser {
         Self(self.0.current_dir(path))
     }
 
+    /// Put the transient service into a slice.
+    ///
+    /// Read `Slice=` in
+    /// [systemd.resource-control(5)](man:systemd.resource-control(5))
+    /// for details.
+    pub fn slice<S: AsRef<str>>(self, slice: S) -> Self {
+        Self(self.0.slice(slice))
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(self) -> Result<StartedRun<'a>> {
         self.0.start().await
@@ -422,6 +432,7 @@ impl RunSystem {
             stderr: None,
             current_dir: None,
             protect_proc: ProtectProcInternal::Default,
+            slice: None,
         }
     }
 
@@ -837,6 +848,18 @@ impl RunSystem {
         }
     }
 
+    /// Put the transient service into a slice.
+    ///
+    /// Read `Slice=` in
+    /// [systemd.resource-control(5)](man:systemd.resource-control(5))
+    /// for details.
+    pub fn slice<S: AsRef<str>>(self, slice: S) -> Self {
+        Self {
+            slice: Some(slice.as_ref().to_owned()),
+            ..self
+        }
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
         let mut argv = vec![&self.path];
@@ -857,6 +880,10 @@ impl RunSystem {
 
         if let Some(d) = self.current_dir {
             properties.push(("WorkingDirectory", Value::from(d)));
+        }
+
+        if let Some(s) = self.slice {
+            properties.push(("Slice", Value::from(s)));
         }
 
         let proc = match self.protect_proc {
