@@ -205,8 +205,6 @@ struct ConfigFile {
     #[serde(default = "stack_inf")]
     stack_limit: Byte,
     #[serde(default = "thirty_two")]
-    nproc_limit: NonZeroU64,
-    #[serde(default = "thirty_two")]
     nofile_limit: NonZeroU64,
     #[cfg(feature = "hustoj")]
     #[serde(default)]
@@ -286,7 +284,6 @@ async fn run<P1: AsRef<Path>, P2: AsRef<Path>>(
         .protect_proc(systemd_run::ProtectProc::invisible())
         .no_new_privileges()
         .limit_fsize(lim.output)
-        .limit_nproc(etc.nproc_limit)
         .limit_nofile(etc.nofile_limit)
         .limit_stack(etc.stack_limit)
         .stdin(stdin)

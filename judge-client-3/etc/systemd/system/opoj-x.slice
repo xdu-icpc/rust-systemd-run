@@ -20,6 +20,10 @@ Description=Slice for OJ (runner X)
 [Slice]
 # Normally we expect solutions judged with one CPU core.
 CPUQuota=100%
+# Limit number of tasks (threads).  Though CPUQuota and AllowedCPUs are
+# enough to prevent a "clever" participant from getting advantage with
+# multi-threading, malicious "fork bombs" are still too dangerous.
+TasksMax=32
 # Uncomment and change "Y" to a CPU core ID when installing this file.
 # "Y" is not necessary to be same with "X".
 #AllowedCPUs=Y
