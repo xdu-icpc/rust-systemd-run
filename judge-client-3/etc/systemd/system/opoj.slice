@@ -1,0 +1,12 @@
+# If you changed "config.slice=xyz" in judge3.toml or will use "--slice=xyz"
+# in the command line, this should be renamed to xyz.slice.
+
+# Like every systemd unit configuration file, you need to run
+# "systemctl daemon-reload" and restart this slice unit to make the settings
+# effective ater modiying it.
+[Unit]
+Description=Slice for OJ
+
+[Slice]
+# Some settings can be used here to limit the total resource consumption of
+# all judge jobs.  See man:systemd.resource-control.

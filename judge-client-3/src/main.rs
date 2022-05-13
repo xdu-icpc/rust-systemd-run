@@ -128,6 +128,9 @@ struct Flags {
     /// Chroot dir.
     #[clap(long)]
     chroot_dir: Option<PathBuf>,
+    /// Slice containing jobs.
+    #[clap(long)]
+    slice: Option<String>,
 }
 
 #[derive(Debug, Parser)]
@@ -250,16 +253,26 @@ async fn run<P1: AsRef<Path>, P2: AsRef<Path>>(
         warn!("unrecognized runner_id, allowed_cpu not used");
     }
 
+    let slice = cli
+        .cfg
+        .slice
+        .as_deref()
+        .or(etc.config.slice.as_deref())
+        .unwrap_or("opoj")
+        .to_owned()
+        + "-"
+        + &cli.runner_id
+        + ".slice";
+
     systemd_run::RunSystem::new(&cmd[0])
-        .service_name("opoj-runner-".to_owned() + &cli.runner_id)
         .args(&cmd[1..])
+        .service_name("opoj-runner-".to_owned() + &cli.runner_id)
+        .slice(&slice)
         .collect_on_fail()
         .identity(systemd_run::Identity::dynamic())
         .runtime_max(lim.time)
         .memory_max(lim.memory)
         .memory_swap_max(Byte::from_bytes(0))
-        .cpu_quota(NonZeroU64::new(100).unwrap())
-        .allowed_cpus(cpu.as_ref())
         .private_network()
         .private_ipc()
         .mount("/", systemd_run::Mount::bind(u8p(&root)?))

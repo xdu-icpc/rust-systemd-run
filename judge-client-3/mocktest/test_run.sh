@@ -1,11 +1,23 @@
 #!/bin/sh
 
+set +e
+
 cargo build
 
 mkdir -p output
 
-for i in {1..8}; do
-	sudo ../../target/debug/judge-client-3 test$i 0 .
+sudo install -v -d -m755 /run/systemd/system
+cat << EOF | sudo tee /run/systemd/system/opoj-42.slice > /dev/null
+[Slice]
+CPUQuota=100%
+AllowedCPUs=0
+EOF
+
+sudo systemctl stop opoj-42.slice
+sudo systemctl daemon-reload
+
+for i in {1..9}; do
+	sudo ../../target/debug/judge-client-3 test$i 42 .
 done
 
 sudo chmod 666 output/*

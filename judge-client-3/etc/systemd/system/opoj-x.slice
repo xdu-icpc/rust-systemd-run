@@ -1,0 +1,25 @@
+# This file need to be copied to opoj-0.slice, opoj-1.slice, ... for each
+# possible runner_id and adjusted.
+
+# If you changed "config.slice=xyz" in judge3.toml or will use "--slice=xyz"
+# in the command line, these should be renamed to xyz-0.slice, xyz-1.slice
+# and so on.
+
+# Like every systemd unit configuration file, you need to run
+#
+#     systemctl daemon-reload
+#     for x in {0..$N}; do
+#         systemctl restart opoj-$x.slice
+#     done
+#
+# to ensure the settings really effective after modifying the files.
+
+[Unit]
+Description=Slice for OJ
+
+[Slice]
+# Normally we expect solutions judged with one CPU core.
+CPUQuota=100%
+# Uncomment and change "y" to a CPU core ID when installing this file.
+# "y" is not necessary to be same with "x".
+#AllowedCPUs=y

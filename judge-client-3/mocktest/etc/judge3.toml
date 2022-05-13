@@ -16,6 +16,7 @@ time = 10
 # output = "32 MiB"
 
 [config]
+# slice = "opoj"
 log_level = "Debug"
 stderr = true
 data_source = "Mock"
@@ -28,4 +29,10 @@ data_source = "Mock"
 [language.c]
 src_name = "main.c"
 cmd_compile = ["/usr/bin/gcc", "main.c", "-o", "main"]
+cmd_run = ["/tmp/main"]
+
+# Quotes are necessary because "+" seems having special meaning in TOML.
+[language."c++"]
+src_name = "main.cc"
+cmd_compile = ["/usr/bin/g++", "main.cc", "-o", "main"]
 cmd_run = ["/tmp/main"]
