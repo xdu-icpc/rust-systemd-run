@@ -23,17 +23,37 @@ pub use mount::Mount;
 ///
 /// Read `ProtectProc=` in [systemd.exec(5)](man:systemd.exec(5)) for
 /// details.
-#[cfg(feature = "systemd_247")]
-pub enum ProtectProc {
+#[allow(dead_code)]
+enum ProtectProcInternal {
+    NoAccess,
+    Invisible,
+    Ptraceable,
+    Default,
+}
+
+pub struct ProtectProc(ProtectProcInternal);
+
+impl ProtectProc {
     /// Take away the ability to access most of other users' process
     /// metadata
-    NoAccess,
+    pub fn no_access() -> Self {
+        Self(ProtectProcInternal::NoAccess)
+    }
     /// Processes owned by other users are hidden
-    Invisible,
+    pub fn invisible() -> Self {
+        Self(ProtectProcInternal::Invisible)
+    }
     /// Processes not traceable by the unit are hidden
-    Ptraceable,
+    pub fn ptraceable() -> Self {
+        Self(ProtectProcInternal::Ptraceable)
+    }
+}
+
+impl Default for ProtectProc {
     /// No protection
-    Default,
+    fn default() -> Self {
+        Self(ProtectProcInternal::Default)
+    }
 }
 
 /// Information of a transient service for running on the system service
@@ -67,7 +87,7 @@ pub struct RunSystem {
     stdout: Option<OutputSpec>,
     stderr: Option<OutputSpec>,
     current_dir: Option<String>,
-    protect_proc: ProtectProc,
+    protect_proc: ProtectProcInternal,
 }
 
 /// Information of a transient service for running on the per-user service
@@ -401,7 +421,7 @@ impl RunSystem {
             stdout: None,
             stderr: None,
             current_dir: None,
-            protect_proc: ProtectProc::Default,
+            protect_proc: ProtectProcInternal::Default,
         }
     }
 
@@ -812,7 +832,7 @@ impl RunSystem {
     #[cfg(feature = "systemd_247")]
     pub fn protect_proc(self, x: ProtectProc) -> Self {
         Self {
-            protect_proc: x,
+            protect_proc: x.0,
             ..self
         }
     }
@@ -840,10 +860,10 @@ impl RunSystem {
         }
 
         let proc = match self.protect_proc {
-            ProtectProc::NoAccess => Some("noaccess"),
-            ProtectProc::Invisible => Some("invisible"),
-            ProtectProc::Ptraceable => Some("ptraceable"),
-            ProtectProc::Default => None,
+            ProtectProcInternal::NoAccess => Some("noaccess"),
+            ProtectProcInternal::Invisible => Some("invisible"),
+            ProtectProcInternal::Ptraceable => Some("ptraceable"),
+            ProtectProcInternal::Default => None,
         };
 
         if let Some(v) = proc {
