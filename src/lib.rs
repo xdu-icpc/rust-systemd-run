@@ -79,6 +79,8 @@ pub struct RunSystem {
     limit_fsize_soft: Option<Byte>,
     limit_stack: Option<Byte>,
     limit_stack_soft: Option<Byte>,
+    limit_core: Option<Byte>,
+    limit_core_soft: Option<Byte>,
     limit_nofile: Option<u64>,
     limit_nofile_soft: Option<u64>,
     limit_nproc: Option<u64>,
@@ -280,6 +282,27 @@ impl RunUser {
         self.limit_fsize_soft_hard(lim, lim)
     }
 
+    /// Set soft and hard limits of the maximum size in bytes of files that
+    /// the process may create.
+    ///
+    /// Any setting exceeding [u64::MAX] bytes will be trimmed to
+    /// [u64::MAX] bytes silently.  And, if `soft` is greater than `hard`,
+    /// it will be trimmed to `hard` silently.
+    ///
+    /// Read `LimitCORE=` in [systemd.exec(5)](man:systemd.exec(5)) and
+    /// `RLIMIT_CORE` in [prlimit(2)](man:prlimit(2)) for details.
+    ///
+    /// Unlike [RunSystem::limit_core_soft_hard], this can't be used to
+    /// increase the hard limit because of insufficient privileges.
+    pub fn limit_core_soft_hard(self, soft: Byte, hard: Byte) -> Self {
+        Self(self.0.limit_core_soft_hard(soft, hard))
+    }
+
+    /// Shorthand for `self.limit_fsize_soft_hard(lim, lim)`.
+    pub fn limit_core(self, lim: Byte) -> Self {
+        self.limit_core_soft_hard(lim, lim)
+    }
+
     /// Set soft and hard limits of the number of threads for the real user
     /// ID of the process.
     ///
@@ -427,6 +450,8 @@ impl RunSystem {
             limit_nofile_soft: None,
             limit_nproc: None,
             limit_nproc_soft: None,
+            limit_core: None,
+            limit_core_soft: None,
             stdin: None,
             stdout: None,
             stderr: None,
@@ -714,6 +739,29 @@ impl RunSystem {
         self.limit_fsize_soft_hard(lim, lim)
     }
 
+    /// Set soft and hard limits of the maximum size in bytes of files that
+    /// the process may create.
+    ///
+    /// Any setting exceeding [u64::MAX] bytes will be trimmed to
+    /// [u64::MAX] bytes silently.  And, if `soft` is greater than `hard`,
+    /// it will be trimmed to `hard` silently.
+    ///
+    /// Read `LimitCORE=` in [systemd.exec(5)](man:systemd.exec(5)) and
+    /// `RLIMIT_CORE` in [prlimit(2)](man:prlimit(2)) for details.
+    pub fn limit_core_soft_hard(self, soft: Byte, hard: Byte) -> Self {
+        let soft = std::cmp::min(soft, hard);
+        Self {
+            limit_core: Some(hard),
+            limit_core_soft: Some(soft),
+            ..self
+        }
+    }
+
+    /// Shorthand for `self.limit_fsize_soft_hard(lim, lim)`.
+    pub fn limit_core(self, lim: Byte) -> Self {
+        self.limit_core_soft_hard(lim, lim)
+    }
+
     /// Set soft and hard limits of the number of threads for the real user
     /// ID of the process.
     ///
@@ -941,6 +989,8 @@ impl RunSystem {
             ("LimitFSIZESoft", &self.limit_fsize_soft),
             ("LimitSTACK", &self.limit_stack),
             ("LimitSTACKSoft", &self.limit_stack_soft),
+            ("LimitCORE", &self.limit_core),
+            ("LimitCORESoft", &self.limit_core_soft),
         ] {
             if let Some(v) = v {
                 let b = u64::try_from(v.get_bytes()).unwrap_or(u64::MAX);
