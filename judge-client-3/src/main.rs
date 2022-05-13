@@ -320,7 +320,10 @@ async fn judge<T: data::DataSource, P: AsRef<Path>, Q: AsRef<Path>>(
         src.write_all(&d.source).map_err(Error::IOError)?;
     }
 
-    let root = cli.cfg.chroot_dir.as_ref()
+    let root = cli
+        .cfg
+        .chroot_dir
+        .as_ref()
         .or(etc.config.chroot_dir.as_ref())
         .map(u8p)
         .transpose()?

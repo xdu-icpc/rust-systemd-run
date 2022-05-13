@@ -146,11 +146,30 @@ impl DataSource for HustOJDataSource {
             .as_ref()
             .parse()
             .map_err(|_| Error::BadSolutionID(id.as_ref().to_owned()))?;
-        sqlx::query!(
-            "UPDATE compileinfo SET error = ? WHERE solution_id = ?",
-            String::from_utf8(msg).map_err(Error::NonUtf8Msg)?,
+        let msg = String::from_utf8(msg).map_err(Error::NonUtf8Msg)?;
+
+        if sqlx::query!(
+            "SELECT count(*) as cnt FROM compileinfo WHERE solution_id = ?",
             id
         )
+        .fetch_one(&mut self.conn)
+        .await
+        .map_err(Error::SQLError)?
+        .cnt == 0
+        {
+            sqlx::query!(
+                "INSERT INTO compileinfo (error, solution_id) \
+                 VALUES (?, ?)",
+                msg,
+                id
+            )
+        } else {
+            sqlx::query!(
+                "UPDATE compileinfo SET error = ? WHERE solution_id = ?",
+                msg,
+                id
+            )
+        }
         .execute(&mut self.conn)
         .await
         .map_err(Error::SQLError)?;
@@ -161,11 +180,30 @@ impl DataSource for HustOJDataSource {
             .as_ref()
             .parse()
             .map_err(|_| Error::BadSolutionID(id.as_ref().to_owned()))?;
-        sqlx::query!(
-            "UPDATE runtimeinfo SET error = ? WHERE solution_id = ?",
-            String::from_utf8(msg).map_err(Error::NonUtf8Msg)?,
+        let msg = String::from_utf8(msg).map_err(Error::NonUtf8Msg)?;
+
+        if sqlx::query!(
+            "SELECT count(*) as cnt FROM runtimeinfo WHERE solution_id = ?",
             id
         )
+        .fetch_one(&mut self.conn)
+        .await
+        .map_err(Error::SQLError)?
+        .cnt == 0
+        {
+            sqlx::query!(
+                "INSERT INTO runtimeinfo (error, solution_id) \
+                 VALUES (?, ?)",
+                msg,
+                id
+            )
+        } else {
+            sqlx::query!(
+                "UPDATE runtimeinfo SET error = ? WHERE solution_id = ?",
+                msg,
+                id
+            )
+        }
         .execute(&mut self.conn)
         .await
         .map_err(Error::SQLError)?;
