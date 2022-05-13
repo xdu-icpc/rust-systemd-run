@@ -286,6 +286,7 @@ async fn run<P1: AsRef<Path>, P2: AsRef<Path>>(
         .limit_fsize(lim.output)
         .limit_nofile(etc.nofile_limit)
         .limit_stack(etc.stack_limit)
+        .limit_core(Byte::from_bytes(0))
         .stdin(stdin)
         .stdout(stdout)
         .stderr(stderr)
