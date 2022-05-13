@@ -15,8 +15,16 @@ serde_with = "1.13.0"
 log4rs = "1.1.1"
 async-std = { version = "1.10.0", features = ["attributes"] }
 uuid = { version = "0.8.2", features = ["v4"] }
-sqlx = { version = "0.5.13", features = ["mysql", "runtime-async-std-native-tls"] }
 async-trait = "0.1.53"
+cfg-if = "1.0.0"
+
+[dependencies.sqlx]
+version = "0.5.13"
+features = ["mysql", "runtime-async-std-native-tls"]
+optional = true
+
+[features]
+hustoj = ["dep:sqlx"]
 
 [dependencies.systemd-run]
 path = ".."

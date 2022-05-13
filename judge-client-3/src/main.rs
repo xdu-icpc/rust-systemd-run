@@ -1,4 +1,5 @@
 pub mod data;
+#[cfg(feature = "hustoj")]
 mod data_hustoj;
 mod data_mock;
 mod error;
@@ -8,6 +9,7 @@ pub mod prelude {
     pub use crate::error::{Error, Result};
     pub use crate::util;
     pub use byte_unit::Byte;
+    pub use cfg_if::cfg_if;
     pub use log::{debug, error, info, trace, warn};
     pub use serde::Deserialize;
     pub use std::fs::{create_dir, create_dir_all, File};
@@ -168,6 +170,7 @@ fn home_judge() -> PathBuf {
     "/home/judge".into()
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct Hust {
     #[serde(default)]
@@ -205,6 +208,7 @@ struct ConfigFile {
     nproc_limit: NonZeroU64,
     #[serde(default = "thirty_two")]
     nofile_limit: NonZeroU64,
+    #[cfg(feature = "hustoj")]
     #[serde(default)]
     hust: Hust,
 }
@@ -635,29 +639,26 @@ async fn main() {
             exit(1)
         }
         Some(DataSource::HustOJ) => {
-            if etc.hust.db_url.is_empty() {
-                error!("connection URL is not set");
-                exit(1);
+            cfg_if! {
+                if #[cfg(feature = "hustoj")] {
+                    if etc.hust.db_url.is_empty() {
+                        error!("connection URL is not set");
+                        exit(1);
+                    }
+                    let db = data_hustoj::get(
+                        &etc.hust.db_url,
+                        &etc.hust.oj_home
+                    ).await;
+                    if let Err(ref e) = db {
+                        error!("cannot connect to HustOJ DB: {}", e);
+                    }
+                    let mut db = db.unwrap();
+                    judge_feedback(&cli, &etc, &mut db, &run_dir).await
+                } else {
+                    error!("HustOJ disabled at build time");
+                    exit(1);
+                }
             }
-            use sqlx::ConnectOptions;
-            use std::str::FromStr;
-            let conn = sqlx::mysql::MySqlConnectOptions::from_str(&etc.hust.db_url);
-            if conn.is_err() {
-                error!("bad URL {}", &etc.hust.db_url);
-                exit(1);
-            }
-            let conn = conn
-                .unwrap()
-                .log_statements(log::LevelFilter::Trace)
-                .connect()
-                .await;
-            if conn.is_err() {
-                error!("can not connect to {}", &etc.hust.db_url);
-                exit(1);
-            }
-
-            let mut oj_data = data_hustoj::HustOJDataSource::new(conn.unwrap(), &etc.hust.oj_home);
-            judge_feedback(&cli, &etc, &mut oj_data, &run_dir).await
         }
         Some(DataSource::Mock) => {
             let mut oj_data = data_mock::MockDataSource::new();

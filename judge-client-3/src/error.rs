@@ -1,3 +1,8 @@
+#[cfg(feature = "hustoj")]
+type SqlxError = sqlx::Error;
+#[cfg(not(feature = "hustoj"))]
+type SqlxError = std::convert::Infallible;
+
 #[derive(Debug)]
 pub enum Error {
     IOError(std::io::Error),
@@ -8,7 +13,7 @@ pub enum Error {
     SystemdError(systemd_run::Error),
     UnconfiguredLanguage(String),
     BadSolutionID(String),
-    SQLError(sqlx::Error),
+    SQLError(SqlxError),
     BadProblem(i32),
     NonUtf8Msg(std::string::FromUtf8Error),
 }

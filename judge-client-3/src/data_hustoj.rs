@@ -17,13 +17,24 @@ struct QueryLine {
     language: u32,
 }
 
-impl HustOJDataSource {
-    pub fn new<P: AsRef<Path>>(conn: sqlx::MySqlConnection, oj_home: P) -> Self {
-        Self {
-            conn,
-            oj_home: oj_home.as_ref().into(),
-        }
-    }
+pub async fn get<S, P>(db_url: S, oj_home: P) -> Result<HustOJDataSource>
+where
+    S: AsRef<str>,
+    P: AsRef<Path>,
+{
+    use sqlx::{mysql::MySqlConnectOptions, ConnectOptions};
+    use std::str::FromStr;
+    let conn = MySqlConnectOptions::from_str(db_url.as_ref())
+        .map_err(Error::SQLError)?
+        .log_statements(log::LevelFilter::Trace)
+        .connect()
+        .await
+        .map_err(Error::SQLError)?;
+
+    Ok(HustOJDataSource {
+        conn,
+        oj_home: PathBuf::from(oj_home.as_ref()),
+    })
 }
 
 #[async_trait::async_trait]
