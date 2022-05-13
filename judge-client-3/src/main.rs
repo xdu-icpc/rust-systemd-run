@@ -423,6 +423,7 @@ async fn judge_feedback<T: data::DataSource, P: AsRef<Path>>(
     run_dir: P,
 ) -> Result<()> {
     // Make run_dir absolute.
+    create_dir_all(&run_dir).map_err(Error::IOError)?;
     let run_dir = run_dir.as_ref().canonicalize().map_err(Error::IOError)?;
 
     // Generate an "unique" name for tmp_dir.
