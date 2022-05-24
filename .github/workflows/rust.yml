@@ -19,11 +19,13 @@ jobs:
         with:
           fetch-depth: 0
       - name: Test
-        run: sudo su --login $(whoami) -c "cd $PWD; cargo test $TEST_FLAG"
+        run: sudo su --login $(whoami) -c "umask 022; cd $PWD; cargo test $TEST_FLAG"
       - name: Test as Root
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: sudo
-        run: cargo test $TEST_FLAG -- --include-ignored root
+        run: |
+          umask 022
+          cargo test $TEST_FLAG -- --include-ignored root
       - name: Debug
         if: always()
         run: journalctl -b
