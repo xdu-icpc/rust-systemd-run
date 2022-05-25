@@ -12,20 +12,18 @@ jobs:
     name: Test on Ubuntu
     runs-on: ubuntu-22.04
     env:
-      TEST_FLAG: --no-default-features --features systemd_249
+      TEST_FLAG: --no-default-features --features systemd_249 -vv
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Test
-        run: sudo su --login $(whoami) -c "umask 022; cd $PWD; cargo test $TEST_FLAG"
+        run: sudo su --login $(whoami) -c "cd $PWD; cargo test $TEST_FLAG"
       - name: Test as Root
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: sudo
-        run: |
-          umask 022
-          cargo test $TEST_FLAG -- --include-ignored root
+        run: cargo test $TEST_FLAG -- --include-ignored root
       - name: Debug
         if: always()
         run: journalctl -b
