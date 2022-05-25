@@ -12,7 +12,7 @@ jobs:
     name: Test on Ubuntu
     runs-on: ubuntu-22.04
     env:
-      TEST_FLAG: --no-default-features --features systemd_249
+      TEST_FLAG: --no-default-features --features systemd_249,unified_cgroup
     steps:
       - name: Prepare
         run: chmod 755 $HOME
