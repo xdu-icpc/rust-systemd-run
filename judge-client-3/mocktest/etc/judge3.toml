@@ -1,15 +1,18 @@
 # This also serves as an example for configuring judge-client-3.
+# For production use, edit and save this to $OJ_BASE/etc/judge3.toml.  HustOJ
+# judged will pass $OJ_BASE via command line so we can find it.
 
 # Comment this line to use unlimited stack.
 stack_limit = "1 GiB"
-# nproc_limit = 32
-# nofile_limit = 32
 
+# An example to set compiler_limit.  You can omit some fields to use the
+# default.
 [compiler_limit]
 time = 10
 # memory = "1 GiB"
 # output = "32 MiB"
 
+# This is the default limit for compiler and compare programs.
 # [compare_limit]
 # time = 15
 # memory = "1 GiB"
@@ -19,13 +22,26 @@ time = 10
 # slice = "opoj"
 log_level = "Debug"
 stderr = true
+
+# Change it to "HustOJ" for real use.
 data_source = "Mock"
+
+# It's recommended to use a tmpfs for performance.
+# run_dir = "/tmp/judged"
+
+# Don't really use it in production server: you should set up a chroot
+# environment using debootstrap or similar.  Compilers and submitted
+# programs will be executed in the chroot environment, but compare programs
+# are not.
 # chroot_dir = "/"
 
 # Example for language configuration.
 # It can be assumed that the compile and run commands are executed with
 # "/tmp" (in the chroot sandbox) as the current directory.  The path to
 # executables in both commands must be absolute.
+#
+# For an OJ in production mode it's likely you should pass "-O2" to
+# compiler.
 [language.c]
 src_name = "main.c"
 cmd_compile = ["/usr/bin/gcc", "main.c", "-o", "main"]
@@ -36,3 +52,8 @@ cmd_run = ["/tmp/main"]
 src_name = "main.cc"
 cmd_compile = ["/usr/bin/g++", "main.cc", "-o", "main"]
 cmd_run = ["/tmp/main"]
+
+# An example for HustOJ configuration.
+#[hust]
+#db_url = "mysql://user:passwd@localhost/jol?socket=/run/mysqld/mysqld.sock"
+#oj_home = "/home/judge"
