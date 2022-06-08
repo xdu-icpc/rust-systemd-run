@@ -16,13 +16,14 @@ byte-unit = "4.0.14"
 async-std = { version = "1.10.0", features = ["attributes"] }
 
 [features]
-default = ["unified_cgroup", "systemd_249"]
+default = ["unified_cgroup", "systemd_251"]
 
 # Unified cgroup support was first introduced in 226 but it's broken with
 # newer kernels.  Current unified cgroup support was added in 230, but it
 # does not provides interesting functions until 231.
 unified_cgroup = ["systemd_231"]
 
+systemd_251 = ["systemd_249"]
 systemd_249 = ["systemd_248"]
 systemd_248 = ["systemd_247"]
 systemd_247 = ["systemd_244"]

@@ -417,6 +417,19 @@ impl RunUser {
         Self(self.0.slice(slice))
     }
 
+    /// Sets up a new user namespace for the executed processes and
+    /// configures a minimal user and group mapping.
+    ///
+    /// Read `PrivateUsers=` in [systemd.exec(5)](man:systemd.exec(5))
+    /// for details.
+    ///
+    /// This setting is unavailable with the feature `systemd_251`
+    /// disabled.
+    #[cfg(feature = "systemd_251")]
+    pub fn private_users(self) -> Self {
+        Self(self.0.private_users())
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(self) -> Result<StartedRun<'a>> {
         self.0.start().await
