@@ -64,3 +64,22 @@ async fn test_root_private_ipc() {
         );
     }
 }
+
+#[async_std::test]
+#[ignore]
+#[cfg(feature = "systemd_232")]
+async fn test_root_private_users() {
+    const PATH: &'static str = concat!(env!("OUT_DIR"), "/test-aux/setuid");
+    let r = RunSystem::new(PATH)
+        .private_users()
+        .start()
+        .await
+        .expect("should be able to start the test program")
+        .wait()
+        .await
+        .expect("should be able to get the status of the Run");
+    assert!(
+        !r.is_failed(),
+        "UID 514 should not exist in the separate user namespace"
+    );
+}

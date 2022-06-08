@@ -7,7 +7,7 @@ objpfx = $(if $(OUT_DIR), $(objdir)/)
 targets = $(objpfx)memory $(objpfx)threads $(objpfx)shm $(objpfx)minimal \
 		  $(objpfx)floppy.img $(objpfx)rw $(objpfx)rust-systemd-run-test \
 		  $(objpfx)nosgid $(objpfx)stdin.txt $(objpfx)waste-fd \
-		  $(objpfx)waste-pid $(objpfx)use-stack
+		  $(objpfx)waste-pid $(objpfx)use-stack $(objpfx)setuid
 
 all: $(targets) $(if $(OUT_DIR),,.gitignore)
 
@@ -46,6 +46,9 @@ $(objpfx)waste-pid: waste-pid.cc $(objdir)
 	$(CXX) $(CXXFLAGS) $< -o $@ -pthread
 
 $(objpfx)use-stack: use-stack.c $(objdir) barrier.h
+	$(CC) $(CFLAGS) $< -o $@
+
+$(objpfx)setuid: setuid.c $(objdir)
 	$(CC) $(CFLAGS) $< -o $@
 
 $(objpfx)stdin.txt:

@@ -91,6 +91,7 @@ pub struct RunSystem {
     current_dir: Option<String>,
     protect_proc: ProtectProcInternal,
     slice: Option<String>,
+    private_users: bool,
 }
 
 /// Information of a transient service for running on the per-user service
@@ -458,6 +459,7 @@ impl RunSystem {
             current_dir: None,
             protect_proc: ProtectProcInternal::Default,
             slice: None,
+            private_users: false,
         }
     }
 
@@ -908,6 +910,22 @@ impl RunSystem {
         }
     }
 
+    /// Sets up a new user namespace for the executed processes and
+    /// configures a minimal user and group mapping.
+    ///
+    /// Read `PrivateUsers=` in [systemd.exec(5)](man:systemd.exec(5))
+    /// for details.
+    ///
+    /// This setting is unavailable with the feature `systemd_232`
+    /// disabled.
+    #[cfg(feature = "systemd_232")]
+    pub fn private_users(self) -> Self {
+        Self {
+            private_users: true,
+            ..self
+        }
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
         let mut argv = vec![&self.path];
@@ -1009,6 +1027,7 @@ impl RunSystem {
             ("MountAPIVFS", self.mount_api_vfs),
             ("PrivateDevices", self.private_devices),
             ("NoNewPrivileges", self.no_new_privileges),
+            ("PrivateUsers", self.private_users),
         ] {
             // Don't push false values as they may break on old Systemd.
             if v {
