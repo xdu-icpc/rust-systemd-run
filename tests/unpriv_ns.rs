@@ -1,8 +1,8 @@
+#![cfg(feature = "systemd_251")]
 use systemd_run::RunUser;
 
 #[async_std::test]
-#[cfg(feature = "systemd_251")]
-async fn test_root_private_users() {
+async fn test_unpriv_private_users() {
     const PATH: &'static str = concat!(env!("OUT_DIR"), "/test-aux/setuid");
     let r = RunUser::new(PATH)
         .private_users()
