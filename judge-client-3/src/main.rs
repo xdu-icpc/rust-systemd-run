@@ -647,8 +647,9 @@ async fn main() {
                         &etc.hust.db_url,
                         &etc.hust.oj_home
                     ).await;
-                    if let Err(ref e) = db {
+                    if let Err(e) = db {
                         error!("cannot connect to HustOJ DB: {}", e);
+                        exit(1);
                     }
                     let mut db = db.unwrap();
                     judge_feedback(&cli, &etc, &mut db, &run_dir).await
