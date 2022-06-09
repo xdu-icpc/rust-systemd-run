@@ -12,8 +12,8 @@ make a 4th iteration.
 ## How to use
 
 ```
-cargo build --release --feature=hustoj
-sudo install -vm755 target/release/judge-client-3 /usr/bin
+DATABASE_URL=mysql://user:password@localhost/jol?socket=/run/mysqld/mysqld.sock cargo build --release --features=hustoj
+sudo install -vm755 ../target/release/judge-client-3 /usr/bin
 mv /usr/bin/judge_client{,.old}
 ln -sv judge-client-3 /usr/bin/judge_client
 ```
