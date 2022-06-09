@@ -1,4 +1,4 @@
-name: Test systemd-run lib
+name: Test the package
 
 on:
   push:
@@ -20,10 +20,14 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Test
+      - name: Test systemd-run lib
         run: sudo su --login $(whoami) -c "cd $PWD; cargo test $TEST_FLAG"
-      - name: Test as Root
+      - name: Test systemd-run lib as Root
         run: sudo su --login $(whoami) -c "cd $PWD; CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER=sudo cargo test $TEST_FLAG -- --include-ignored root"
+      - name: Test judge-client-3
+        run: |
+          cd judge-client-3/mocktest
+          ./test_run.sh
       - name: Debug
         if: always()
         run: journalctl -b
