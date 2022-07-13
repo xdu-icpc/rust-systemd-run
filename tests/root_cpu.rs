@@ -22,10 +22,6 @@ async fn test_root_allowed_cpus() {
         r.wall_time_usage() >= Duration::from_millis(900),
         "test program should run for at least 0.9s with one CPU"
     );
-    assert!(
-        r.wall_time_usage() <= Duration::from_millis(1100),
-        "test program should run for about 1s with one CPU"
-    );
 }
 
 #[async_std::test]
