@@ -119,7 +119,7 @@ fn default_unit_name(bus: &zbus::Connection) -> Result<String> {
                 // We couldn't get the unique name, which is a pretty
                 // common case if we are connected to systemd directly.
                 // In that case, just pick a random uuid as name.
-                Ok(('r', uuid::Uuid::new_v4().to_simple().to_string()))
+                Ok(('r', uuid::Uuid::new_v4().simple().to_string()))
             },
             |s| {
                 for p in [":1.", ":"] {
