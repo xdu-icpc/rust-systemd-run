@@ -18,11 +18,6 @@ pub use identity::Identity;
 pub use ioredirect::{InputSpec, OutputSpec};
 pub use mount::Mount;
 
-/// Controls the `hidepid=` mount option of the `procfs` instance in the
-/// private namespace of the unit.
-///
-/// Read `ProtectProc=` in [systemd.exec(5)](man:systemd.exec(5)) for
-/// details.
 #[allow(dead_code)]
 enum ProtectProcInternal {
     NoAccess,
@@ -31,19 +26,27 @@ enum ProtectProcInternal {
     Default,
 }
 
+/// Controls the `hidepid=` mount option of the `procfs` instance in the
+/// private namespace of the unit.
+///
+/// Read `ProtectProc=` in [systemd.exec(5)](man:systemd.exec(5)) for
+/// details.
 pub struct ProtectProc(ProtectProcInternal);
 
 impl ProtectProc {
     /// Take away the ability to access most of other users' process
     /// metadata
+    #[cfg(feature = "systemd_247")]
     pub fn no_access() -> Self {
         Self(ProtectProcInternal::NoAccess)
     }
     /// Processes owned by other users are hidden
+    #[cfg(feature = "systemd_247")]
     pub fn invisible() -> Self {
         Self(ProtectProcInternal::Invisible)
     }
     /// Processes not traceable by the unit are hidden
+    #[cfg(feature = "systemd_247")]
     pub fn ptraceable() -> Self {
         Self(ProtectProcInternal::Ptraceable)
     }
