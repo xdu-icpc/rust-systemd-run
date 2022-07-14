@@ -1,8 +1,9 @@
+#![cfg(feature = "systemd_236")]
+
 use byte_unit::Byte;
 use systemd_run::{RunSystem, RunUser};
 
 #[async_std::test]
-#[cfg(feature = "systemd_236")]
 async fn test_limit_fsize() {
     const F: &'static str = concat!(env!("OUT_DIR"), "/test-aux/test-fsz");
     // Attempt to copy 4M, but use limit_fsize = 1M to stop it.
@@ -29,7 +30,6 @@ async fn test_limit_fsize() {
 }
 
 #[async_std::test]
-#[cfg(feature = "systemd_236")]
 async fn test_limit_nofile() {
     const E: &'static str = concat!(env!("OUT_DIR"), "/test-aux/waste-fd");
     let r = RunUser::new(E)
@@ -65,7 +65,6 @@ async fn test_root_limit_stack() {
 
 #[async_std::test]
 #[ignore]
-#[cfg(feature = "systemd_236")]
 async fn test_root_limit_nproc() {
     const E: &'static str = concat!(env!("OUT_DIR"), "/test-aux/waste-pid");
     // Use dynamic() here so the test will be irrelevant to any other users,

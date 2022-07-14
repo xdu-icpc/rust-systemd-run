@@ -1,7 +1,7 @@
+#![cfg(feature = "systemd_236")]
 use systemd_run::{InputSpec, OutputSpec, RunUser};
 
 #[async_std::test]
-#[cfg(feature = "systemd_236")]
 async fn test_all_null() {
     const EXE: &'static str = concat!(env!("OUT_DIR"), "/test-aux/rw");
     let r = RunUser::new(EXE)
