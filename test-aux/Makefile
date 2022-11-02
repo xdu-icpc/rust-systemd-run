@@ -7,7 +7,8 @@ objpfx = $(if $(OUT_DIR), $(objdir)/)
 targets = $(objpfx)memory $(objpfx)threads $(objpfx)shm $(objpfx)minimal \
 		  $(objpfx)floppy.img $(objpfx)rw $(objpfx)rust-systemd-run-test \
 		  $(objpfx)nosgid $(objpfx)stdin.txt $(objpfx)waste-fd \
-		  $(objpfx)waste-pid $(objpfx)use-stack $(objpfx)setuid
+		  $(objpfx)waste-pid $(objpfx)use-stack $(objpfx)setuid \
+		  $(objpfx)orga-itsuka
 
 all: $(targets) $(if $(OUT_DIR),,.gitignore)
 
@@ -53,6 +54,9 @@ $(objpfx)setuid: setuid.c $(objdir)
 
 $(objpfx)stdin.txt:
 	echo 1145141919810 > $@
+
+$(objpfx)orga-itsuka: orga-itsuka.c $(objdir)
+	$(CC) $(CFLAGS) $< -o $@
 
 # These are only for preventing some file owned by root from showing up in
 # the tree.

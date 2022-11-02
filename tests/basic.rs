@@ -77,3 +77,25 @@ async fn test_current_dir() {
         .expect("should be able to get the status of the Run");
     assert!(!r.is_failed(), "/bin/cat stdin.txt should run successfully");
 }
+
+#[async_std::test]
+#[cfg(feature = "systemd_236")]
+async fn test_timeout_stop() {
+    const PATH: &'static str = concat!(env!("OUT_DIR"), "/test-aux/orga-itsuka");
+    let r = RunUser::new(PATH)
+        .runtime_max(Duration::from_millis(500))
+        .timeout_stop(Duration::from_millis(500))
+        .collect_on_fail()
+        .start()
+        .await
+        .expect("should be able to start /bin/sleep")
+        .wait()
+        .await
+        .expect("should be able to get the status of the Run");
+    assert!(
+        r.is_failed(),
+        "rogue program should have failed because of a timeout"
+    );
+    assert!(r.wall_time_usage() > Duration::from_secs(1));
+    assert!(r.wall_time_usage() < Duration::from_secs(2));
+}

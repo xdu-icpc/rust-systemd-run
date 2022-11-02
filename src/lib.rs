@@ -95,6 +95,7 @@ pub struct RunSystem {
     protect_proc: ProtectProcInternal,
     slice: Option<String>,
     private_users: bool,
+    timeout_stop: Option<Duration>,
 }
 
 /// Information of a transient service for running on the per-user service
@@ -433,6 +434,23 @@ impl RunUser {
         Self(self.0.private_users())
     }
 
+    /// Configure the time to wait for the service itself to stop.
+    /// If the service doesn't terminate in the specified time, it will be
+    /// forcibly terminated by SIGKILL.
+    ///
+    /// A [Duration] exceeding [u64::MAX] microseconds is trimmed to
+    /// [u64::MAX] microseconds silently.
+    ///
+    /// Read `TimeoutStopSec=` in
+    /// [systemd.service(5)](man:systemd.service(5)) for details.
+    ///
+    /// This setting will be unavailable with the feature `systemd_188`
+    /// disabled.
+    #[cfg(feature = "systemd_188")]
+    pub fn timeout_stop(self, d: Duration) -> Self {
+        Self(self.0.timeout_stop(d))
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(self) -> Result<StartedRun<'a>> {
         self.0.start().await
@@ -476,6 +494,7 @@ impl RunSystem {
             protect_proc: ProtectProcInternal::Default,
             slice: None,
             private_users: false,
+            timeout_stop: None,
         }
     }
 
@@ -942,6 +961,26 @@ impl RunSystem {
         }
     }
 
+    /// Configure the time to wait for the service itself to stop.
+    /// If the service doesn't terminate in the specified time, it will be
+    /// forcibly terminated by SIGKILL.
+    ///
+    /// A [Duration] exceeding [u64::MAX] microseconds is trimmed to
+    /// [u64::MAX] microseconds silently.
+    ///
+    /// Read `TimeoutStopSec=` in
+    /// [systemd.service(5)](man:systemd.service(5)) for details.
+    ///
+    /// This setting will be unavailable with the feature `systemd_188`
+    /// disabled.
+    #[cfg(feature = "systemd_188")]
+    pub fn timeout_stop(self, d: Duration) -> Self {
+        Self {
+            timeout_stop: Some(d),
+            ..self
+        }
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
         let mut argv = vec![&self.path];
@@ -982,9 +1021,14 @@ impl RunSystem {
         let identity_prop = identity::unit_properties(&self.identity);
         properties.extend(identity_prop);
 
-        if let Some(d) = &self.runtime_max {
-            let usec = u64::try_from(d.as_micros()).unwrap_or(u64::MAX);
-            properties.push(("RuntimeMaxUSec", Value::from(usec)));
+        for (k, v) in [
+            ("RuntimeMaxUSec", &self.runtime_max),
+            ("TimeoutStopUSec", &self.timeout_stop),
+        ] {
+            if let Some(d) = v {
+                let usec = u64::try_from(d.as_micros()).unwrap_or(u64::MAX);
+                properties.push((k, Value::from(usec)));
+            }
         }
 
         if !self.allowed_cpus.is_empty() {
