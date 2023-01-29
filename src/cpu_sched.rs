@@ -1,3 +1,4 @@
+#[cfg(feature = "systemd_252")]
 use std::num::NonZeroU8;
 
 pub enum CpuSchedulingPolicy {
@@ -55,6 +56,12 @@ impl CpuScheduling {
 
     /// A first-in, first-out real-time policy, `SCHED_FIFO`, with specified
     /// priority. The priority must be in [1, 99].
+    ///
+    /// This would be unavailable if the feature `systemd_252` is disabled
+    /// because it was broken by
+    /// [systemd #20320](https://github.com/systemd/systemd/issues/20320).
+    /// Use [Self::fifo_default_priority] instead.
+    #[cfg(feature = "systemd_252")]
     pub fn fifo(p: NonZeroU8) -> Self {
         Self {
             policy: CpuSchedulingPolicy::Fifo,
@@ -63,13 +70,34 @@ impl CpuScheduling {
         }
     }
 
+    /// Like [Self::fifo] but with default priority.
+    pub fn fifo_default_priority() -> Self {
+        Self {
+            policy: CpuSchedulingPolicy::Fifo,
+            ..Self::default()
+        }
+    }
     /// A round-robin real-time policy, `SCHED_RR`, with specified priority.
     /// The priority must be in [1, 99].
+    ///
+    /// This would be unavailable if the feature `systemd_252` is disabled
+    /// because it was broken by
+    /// [systemd #20320](https://github.com/systemd/systemd/issues/20320).
+    /// Use [Self::round_robin_default_priority] instead.
+    #[cfg(feature = "systemd_252")]
     pub fn round_robin(p: NonZeroU8) -> Self {
         Self {
             policy: CpuSchedulingPolicy::RoundRobin,
             real_time_priority: Some(p.into()),
             reset_on_fork: false,
+        }
+    }
+
+    /// Like [Self::round_robin] but with default priority.
+    pub fn round_robin_default_priority() -> Self {
+        Self {
+            policy: CpuSchedulingPolicy::RoundRobin,
+            ..Self::default()
         }
     }
 
