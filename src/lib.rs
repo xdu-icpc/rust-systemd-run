@@ -7,12 +7,14 @@ use zbus::fdo::{PropertiesChangedStream, PropertiesProxy};
 use zbus::zvariant::{ObjectPath, Value};
 use zbus::Connection;
 
+mod cpu_sched;
 mod error;
 mod identity;
 mod ioredirect;
 mod mount;
 mod sd;
 
+pub use cpu_sched::CpuScheduling;
 pub use error::{Error, Result};
 pub use identity::Identity;
 pub use ioredirect::{InputSpec, OutputSpec};
@@ -96,6 +98,7 @@ pub struct RunSystem {
     slice: Option<String>,
     private_users: bool,
     timeout_stop: Option<Duration>,
+    cpu_sched: CpuScheduling,
 }
 
 /// Information of a transient service for running on the per-user service
@@ -495,6 +498,7 @@ impl RunSystem {
             slice: None,
             private_users: false,
             timeout_stop: None,
+            cpu_sched: CpuScheduling::default(),
         }
     }
 
@@ -981,6 +985,12 @@ impl RunSystem {
         }
     }
 
+    /// Specify CPU scheduling policy and real-time priority.
+    /// See [CpuScheduling] for details.
+    pub fn cpu_schedule(self, cpu_sched: CpuScheduling) -> Self {
+        Self { cpu_sched, ..self }
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
         let mut argv = vec![&self.path];
@@ -1144,6 +1154,19 @@ impl RunSystem {
 
         for (k, v) in io_prop.iter() {
             properties.push((k, Value::from(v)))
+        }
+
+        let (policy, priority, reset_on_fork) = cpu_sched::marshal(self.cpu_sched);
+
+        for (k, v) in [
+            ("CPUSchedulingPolicy", Value::from(policy)),
+            ("CPUSchedulingResetOnFork", Value::from(reset_on_fork)),
+        ] {
+            properties.push((k, v));
+        }
+
+        if let Some(v) = priority {
+            properties.push(("CPUSchedulingPriority", Value::from(v)));
         }
 
         let properties = properties.iter().map(|(x, y)| (*x, y)).collect::<Vec<_>>();
