@@ -8,7 +8,7 @@ targets = $(objpfx)memory $(objpfx)threads $(objpfx)shm $(objpfx)minimal \
 		  $(objpfx)floppy.img $(objpfx)rw $(objpfx)rust-systemd-run-test \
 		  $(objpfx)nosgid $(objpfx)stdin.txt $(objpfx)waste-fd \
 		  $(objpfx)waste-pid $(objpfx)use-stack $(objpfx)setuid \
-		  $(objpfx)orga-itsuka
+		  $(objpfx)orga-itsuka $(objpfx)run/systemd/incoming
 
 all: $(targets) $(if $(OUT_DIR),,.gitignore)
 
@@ -65,6 +65,9 @@ $(objpfx)floppy.img:
 
 $(objpfx)rust-systemd-run-test:
 	touch $@
+
+$(objpfx)run/systemd/incoming:
+	mkdir -pv $@
 
 .PHONY: clean
 clean:
