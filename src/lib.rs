@@ -1081,8 +1081,7 @@ impl RunSystem {
             ("LimitCORESoft", &self.limit_core_soft),
         ] {
             if let Some(v) = v {
-                let b = u64::try_from(v.get_bytes()).unwrap_or(u64::MAX);
-                properties.push((k, Value::from(b)))
+                properties.push((k, Value::from(v.as_u64())))
             }
         }
 

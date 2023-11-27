@@ -1,13 +1,14 @@
 #![cfg(feature = "systemd_236")]
 
 use byte_unit::Byte;
+use byte_unit::Unit::MiB;
 use systemd_run::{RunSystem, RunUser};
 
 #[async_std::test]
 async fn test_limit_fsize() {
     const F: &'static str = concat!(env!("OUT_DIR"), "/test-aux/test-fsz");
     // Attempt to copy 4M, but use limit_fsize = 1M to stop it.
-    let lim = Byte::from_str("1 MiB").unwrap();
+    let lim = Byte::from_i64_with_unit(1, MiB).unwrap();
     let r = RunUser::new("/bin/dd")
         .arg("if=/dev/zero")
         .arg("of=".to_owned() + F)
@@ -26,7 +27,7 @@ async fn test_limit_fsize() {
     let f = std::fs::File::open(F).expect("output file should exist");
     use std::os::unix::fs::MetadataExt;
     let meta = f.metadata().expect("should be able to get the metadata");
-    assert!(Byte::from_bytes(meta.size() as u128) <= lim);
+    assert!(Byte::from_u64(meta.size()) <= lim);
 }
 
 #[async_std::test]
@@ -51,7 +52,7 @@ async fn test_root_limit_stack() {
     // hard limit of stack is set to a finite value (likely same as the soft
     // limit).  So we have to run this as root to ensure it working.
     const E: &'static str = concat!(env!("OUT_DIR"), "/test-aux/use-stack");
-    let lim = Byte::from_str("256 MiB").unwrap();
+    let lim = Byte::from_i64_with_unit(256, MiB).unwrap();
     let r = RunSystem::new(E)
         .limit_stack(lim)
         .start()
