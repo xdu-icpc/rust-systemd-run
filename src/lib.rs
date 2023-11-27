@@ -150,7 +150,7 @@ fn escape_byte_for_object_path(b: u8) -> String {
     }
 }
 
-fn object_path_from_unit_name<'a, 'b>(s: &'a str) -> Result<ObjectPath<'b>> {
+fn object_path_from_unit_name<'a>(s: &str) -> Result<ObjectPath<'a>> {
     let path_string = "/org/freedesktop/systemd1/unit/".to_owned()
         + &s.bytes()
             .map(escape_byte_for_object_path)
