@@ -83,3 +83,27 @@ async fn test_root_private_users() {
         "UID 514 should not exist in the separate user namespace"
     );
 }
+
+#[async_std::test]
+#[ignore]
+#[cfg(feature = "systemd_227")]
+async fn test_root_private_network_wget_join() {
+    let r = RunSystem::new("/usr/bin/wget")
+        .collect_on_fail()
+        .arg("https://example.org/")
+        .arg("-O")
+        .arg("/dev/null")
+        .private_network()
+        .joins_namespace_of("systemd-resolved.service")
+        .identity(Identity::dynamic())
+        .start()
+        .await
+        .expect("should be able to start wget https://example.org")
+        .wait()
+        .await
+        .expect("should be able to get the status of the Run");
+    assert!(
+        !r.is_failed(),
+        "should not be able to access Internet with joined namespace"
+    );
+}

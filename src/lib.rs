@@ -99,6 +99,7 @@ pub struct RunSystem {
     private_users: bool,
     timeout_stop: Option<Duration>,
     cpu_sched: CpuScheduling,
+    joins_namespace_of: Vec<String>,
 }
 
 /// Information of a transient service for running on the per-user service
@@ -499,6 +500,7 @@ impl RunSystem {
             private_users: false,
             timeout_stop: None,
             cpu_sched: CpuScheduling::default(),
+            joins_namespace_of: vec![],
         }
     }
 
@@ -991,6 +993,26 @@ impl RunSystem {
         Self { cpu_sched, ..self }
     }
 
+    /// See the same `/tmp/`, `/var/tmp/`, IPC namespace, and network
+    /// namespace as one unit that is already started and specified with
+    /// this setting.  If this setting is used multiple times and the
+    /// specified units are started but not sharing their namespace, then
+    /// it is not defined which namespace is joined.  Note that this
+    /// setting only has an effect if [Self::private_network],
+    /// [Self::private_ipc], and/or [Identity::dynamic] is in effect for
+    /// both this unit and the unit whose namespace is joined.
+    ///
+    /// Read `JoinsNamespaceOf=` in [systemd.unit(5)](man:systemd.unit(5))
+    /// for details.
+    ///
+    /// This setting is unavailable with the feature `systemd_227`
+    /// disabled.
+    #[cfg(feature = "systemd_227")]
+    pub fn joins_namespace_of<S: AsRef<str>>(mut self, unit: S) -> Self {
+        self.joins_namespace_of.push(unit.as_ref().into());
+        self
+    }
+
     /// Start the transient service.
     pub async fn start<'a>(mut self) -> Result<StartedRun<'a>> {
         let mut argv = vec![&self.path];
@@ -1009,12 +1031,18 @@ impl RunSystem {
             properties.push(prop);
         }
 
-        if let Some(d) = self.current_dir {
-            properties.push(("WorkingDirectory", Value::from(d)));
+        for (k, v) in [
+            ("WorkingDirectory", self.current_dir),
+            ("Slice", self.slice),
+        ] {
+            if let Some(v) = v {
+                properties.push((k, Value::from(v)));
+            }
         }
 
-        if let Some(s) = self.slice {
-            properties.push(("Slice", Value::from(s)));
+        let join_ns = self.joins_namespace_of;
+        if !join_ns.is_empty() {
+            properties.push(("JoinsNamespaceOf", Value::from(join_ns)));
         }
 
         let proc = match self.protect_proc {
