@@ -1269,7 +1269,7 @@ impl<'a> StartedRun<'a> {
             .map_err(Error::QueryPropertyFail)?;
 
         let time_usage_us = match (t0.downcast_ref(), t1.downcast_ref()) {
-            (Some(Value::U64(t0)), Some(Value::U64(t1))) => t1 - t0,
+            (Ok(Value::U64(t0)), Ok(Value::U64(t1))) => t1 - t0,
             _ => {
                 let t0 = Box::new(t0);
                 let t1 = Box::new(t1);
