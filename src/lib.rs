@@ -109,7 +109,7 @@ pub struct RunUser(RunSystem);
 /// A transient service running.
 pub struct StartedRun<'a> {
     proxy: zbus::fdo::PropertiesProxy<'a>,
-    stream: PropertiesChangedStream<'a>,
+    stream: PropertiesChangedStream,
 }
 
 /// A transient service finished.
@@ -163,7 +163,7 @@ fn object_path_from_unit_name<'a>(s: &str) -> Result<ObjectPath<'a>> {
 async fn listen_unit_property_change<'a>(
     bus: &Connection,
     unit: &ObjectPath<'a>,
-) -> Result<(PropertiesProxy<'a>, PropertiesChangedStream<'a>)> {
+) -> Result<(PropertiesProxy<'a>, PropertiesChangedStream)> {
     let proxy = PropertiesProxy::builder(bus)
         .path(unit)
         .expect("should not fail with validated path")
