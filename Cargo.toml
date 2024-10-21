@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 uuid = { version = "1.6.1", features = ["v4", "fast-rng"] }
 futures = "0.3.29"
-zbus = "4.0.1"
+zbus = "5.0.1"
 zbus_names = "3.0.0"
 byte-unit = "5.0.3"
 thiserror = "1.0"
