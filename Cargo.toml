@@ -1,6 +1,6 @@
 [package]
 name = "systemd-run"
-version = "0.7.1"
+version = "0.8.0"
 edition = "2021"
 description = "A Rust crate for running processes as Systemd transient services."
 repository = "https://github.com/xdu-icpc/rust-systemd-run"
