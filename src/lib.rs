@@ -1227,7 +1227,7 @@ impl RunSystem {
     }
 }
 
-impl<'a> StartedRun<'a> {
+impl StartedRun<'_> {
     /// Wait until a [StartedRun] is finished.
     pub async fn wait(self) -> Result<FinishedRun> {
         let mut stream = self.stream;
