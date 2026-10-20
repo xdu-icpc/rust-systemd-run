@@ -4,8 +4,7 @@ use byte_unit::Byte;
 use std::num::NonZeroU64;
 use std::time::Duration;
 use zbus::fdo::{PropertiesChangedStream, PropertiesProxy};
-use zbus::zvariant::{ObjectPath, Value};
-use zbus::Connection;
+use zbus::{Connection, ObjectPath, Variant};
 
 mod cpu_sched;
 mod error;
@@ -166,9 +165,7 @@ async fn listen_unit_property_change<'a>(
 ) -> Result<(PropertiesProxy<'a>, PropertiesChangedStream)> {
     let proxy = PropertiesProxy::builder(bus)
         .path(unit)
-        .expect("should not fail with validated path")
         .destination("org.freedesktop.systemd1")
-        .expect("should not fail with hardcode dest")
         .build()
         .await
         .expect("should not fail with all info provided");
@@ -1021,13 +1018,13 @@ impl RunSystem {
         let exec_start = vec![(&self.path, &argv, false)];
 
         let mut properties = vec![
-            ("Description", Value::from(&self.path)),
-            ("ExecStart", Value::from(&exec_start)),
-            ("AddRef", Value::from(true)),
+            ("Description", Variant::from(&self.path)),
+            ("ExecStart", Variant::from(&exec_start)),
+            ("AddRef", Variant::from(true)),
         ];
 
         if self.collect_on_fail {
-            let prop = ("CollectMode", Value::from("inactive-or-failed"));
+            let prop = ("CollectMode", Variant::from("inactive-or-failed"));
             properties.push(prop);
         }
 
@@ -1036,13 +1033,13 @@ impl RunSystem {
             ("Slice", self.slice),
         ] {
             if let Some(v) = v {
-                properties.push((k, Value::from(v)));
+                properties.push((k, Variant::from(v)));
             }
         }
 
         let join_ns = self.joins_namespace_of;
         if !join_ns.is_empty() {
-            properties.push(("JoinsNamespaceOf", Value::from(join_ns)));
+            properties.push(("JoinsNamespaceOf", Variant::from(join_ns)));
         }
 
         let proc = match self.protect_proc {
@@ -1053,7 +1050,7 @@ impl RunSystem {
         };
 
         if let Some(v) = proc {
-            properties.push(("ProtectProc", Value::from(v)));
+            properties.push(("ProtectProc", Variant::from(v)));
         }
 
         let identity_prop = identity::unit_properties(&self.identity);
@@ -1065,7 +1062,7 @@ impl RunSystem {
         ] {
             if let Some(d) = v {
                 let usec = u64::try_from(d.as_micros()).unwrap_or(u64::MAX);
-                properties.push((k, Value::from(usec)));
+                properties.push((k, Variant::from(usec)));
             }
         }
 
@@ -1078,7 +1075,7 @@ impl RunSystem {
                 }
                 cpu_set[x] |= 1 << y;
             }
-            properties.push(("AllowedCPUs", Value::from(cpu_set)));
+            properties.push(("AllowedCPUs", Variant::from(cpu_set)));
         }
 
         for (k, v) in [
@@ -1088,7 +1085,7 @@ impl RunSystem {
             ("LimitNOFILESoft", &self.limit_nofile_soft),
         ] {
             if let Some(v) = v {
-                properties.push((k, Value::from(v)))
+                properties.push((k, Variant::from(v)))
             }
         }
 
@@ -1109,13 +1106,13 @@ impl RunSystem {
             ("LimitCORESoft", &self.limit_core_soft),
         ] {
             if let Some(v) = v {
-                properties.push((k, Value::from(v.as_u64())))
+                properties.push((k, Variant::from(v.as_u64())))
             }
         }
 
         if let Some(v) = self.cpu_quota {
             let v = std::cmp::min(v, u64::MAX / 10000);
-            properties.push(("CPUQuotaPerSecUSec", Value::from(v * 10000)));
+            properties.push(("CPUQuotaPerSecUSec", Variant::from(v * 10000)));
         }
 
         for (k, v) in [
@@ -1128,7 +1125,7 @@ impl RunSystem {
         ] {
             // Don't push false values as they may break on old Systemd.
             if v {
-                properties.push((k, Value::from(true)))
+                properties.push((k, Variant::from(true)))
             }
         }
 
@@ -1147,19 +1144,19 @@ impl RunSystem {
         }
 
         if !p_bind.is_empty() {
-            properties.push(("BindPaths", Value::from(p_bind)));
+            properties.push(("BindPaths", Variant::from(p_bind)));
         }
 
         if !p_bind_ro.is_empty() {
-            properties.push(("BindReadOnlyPaths", Value::from(p_bind_ro)));
+            properties.push(("BindReadOnlyPaths", Variant::from(p_bind_ro)));
         }
 
         if !p_image.is_empty() {
-            properties.push(("MountImages", Value::from(p_image)));
+            properties.push(("MountImages", Variant::from(p_image)));
         }
 
         if !p_tmpfs.is_empty() {
-            properties.push(("TemporaryFileSystem", Value::from(p_tmpfs)));
+            properties.push(("TemporaryFileSystem", Variant::from(p_tmpfs)));
         }
 
         let mut io_prop = vec![];
@@ -1180,20 +1177,20 @@ impl RunSystem {
         }
 
         for (k, v) in io_prop.iter() {
-            properties.push((k, Value::from(v)))
+            properties.push((k, Variant::from(v)))
         }
 
         let (policy, priority, reset_on_fork) = cpu_sched::marshal(self.cpu_sched);
 
         for (k, v) in [
-            ("CPUSchedulingPolicy", Value::from(policy)),
-            ("CPUSchedulingResetOnFork", Value::from(reset_on_fork)),
+            ("CPUSchedulingPolicy", Variant::from(policy)),
+            ("CPUSchedulingResetOnFork", Variant::from(reset_on_fork)),
         ] {
             properties.push((k, v));
         }
 
         if let Some(v) = priority {
-            properties.push(("CPUSchedulingPriority", Value::from(v)));
+            properties.push(("CPUSchedulingPriority", Variant::from(v)));
         }
 
         let properties = properties.iter().map(|(x, y)| (*x, y)).collect::<Vec<_>>();
@@ -1233,14 +1230,14 @@ impl StartedRun<'_> {
         let mut stream = self.stream;
         let mut has_job = false;
         let mut active_state = None;
-        let no_job = Value::from((0u32, ObjectPath::try_from("/").unwrap()));
+        let no_job = Variant::from((0u32, ObjectPath::try_from("/").unwrap()));
         use futures::stream::StreamExt;
         while let Some(ev) = stream.next().await {
             let changed = &ev
                 .args()
                 .map_err(Error::ParsePropertyChangeFail)?
                 .changed_properties;
-            if let Some(Value::Str(state)) = changed.get("ActiveState") {
+            if let Some(Variant::Str(state)) = changed.get("ActiveState") {
                 active_state = Some(state.as_str().to_owned());
             }
             if let Some(job) = changed.get("Job") {
@@ -1253,7 +1250,7 @@ impl StartedRun<'_> {
             }
         }
 
-        let iface = zbus_names::InterfaceName::try_from("org.freedesktop.systemd1.Unit")
+        let iface = zbus::names::InterfaceName::try_from("org.freedesktop.systemd1.Unit")
             .expect("should not fail with hardcoded str");
 
         let t0 = self
@@ -1269,7 +1266,7 @@ impl StartedRun<'_> {
             .map_err(Error::QueryPropertyFail)?;
 
         let time_usage_us = match (t0.downcast_ref(), t1.downcast_ref()) {
-            (Ok(Value::U64(t0)), Ok(Value::U64(t1))) => t1 - t0,
+            (Ok(Variant::U64(t0)), Ok(Variant::U64(t1))) => t1 - t0,
             _ => {
                 let t0 = Box::new(t0);
                 let t1 = Box::new(t1);

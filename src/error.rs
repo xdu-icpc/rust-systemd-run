@@ -1,4 +1,4 @@
-use zbus::zvariant::OwnedValue;
+use zbus::OwnedVariant;
 
 /// The error type of `systemd_run`.
 ///
@@ -10,7 +10,7 @@ pub enum Error {
     DBusConnectionFail(zbus::Error),
     /// Invalid D-Bus path.
     #[error("cannot get a valid dbus path: {0}")]
-    DBusInvalidPath(zbus::zvariant::Error),
+    DBusInvalidPath(zbus::Error),
     /// An error subscribing to D-Bus `PropertiesChanged` signal.
     #[error("cannot start listening property change events: {0}")]
     ListenPropertyChangeFail(zbus::Error),
@@ -26,7 +26,7 @@ pub enum Error {
     StartFail(zbus::Error),
     /// An error attempting to calculate the time usage of a service.
     #[error("cannot calculate {0} time usage: t0 = {1:?}, t1 = {2:?}")]
-    TimeUsageFail(&'static str, Box<OwnedValue>, Box<OwnedValue>),
+    TimeUsageFail(&'static str, Box<OwnedVariant>, Box<OwnedVariant>),
 }
 
 /// Alias for a [Result][std::result::Result] with the error type [Error].
