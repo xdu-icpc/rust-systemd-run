@@ -1,4 +1,4 @@
-use zbus::zvariant::Value;
+use zbus::Variant;
 
 enum IdentityInner {
     Session,
@@ -57,13 +57,13 @@ pub fn is_session(i: &Identity) -> bool {
     matches!(i, Identity(IdentityInner::Session))
 }
 
-pub fn unit_properties(i: &Identity) -> Vec<(&'static str, Value)> {
+pub fn unit_properties(i: &Identity) -> Vec<(&'static str, Variant<'_>)> {
     match i {
         Identity(IdentityInner::Session) => vec![],
         Identity(IdentityInner::UserGroup(u, g)) => vec![
-            ("User", Value::from(u.clone())),
-            ("Group", Value::from(g.clone())),
+            ("User", Variant::from(u.clone())),
+            ("Group", Variant::from(g.clone())),
         ],
-        Identity(IdentityInner::Dynamic) => vec![("DynamicUser", Value::from(true))],
+        Identity(IdentityInner::Dynamic) => vec![("DynamicUser", Variant::from(true))],
     }
 }

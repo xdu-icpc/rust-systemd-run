@@ -1,5 +1,5 @@
 use zbus::proxy;
-use zbus::zvariant::Value;
+use zbus::Variant;
 
 #[proxy(
     interface = "org.freedesktop.systemd1.Job",
@@ -21,8 +21,8 @@ pub trait SystemdManager {
         &self,
         name: &str,
         mode: &str,
-        properties: &[(&str, &Value<'_>)],
-        _unused: &[(&str, &[(&str, &Value<'_>)])],
+        properties: &[(&str, &Variant<'_>)],
+        _unused: &[(&str, &[(&str, &Variant<'_>)])],
     );
 
     #[zbus(object = "SystemdJob")]
